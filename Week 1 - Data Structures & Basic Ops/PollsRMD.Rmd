@@ -15,10 +15,19 @@ library(knitr)
 # Introduction  
   
 The following dataset was pulled from data.thirtyeightfive.com as a series of polls for House Candidates within each state. I'd like to filter out some unnecessary columns and focus primarily on State, Candidate, Dates, Sample Size,Party, and Percent to get this dataset ready for some deeper analysis.
+https://fivethirtyeight.com/features/desantis-is-polling-well-against-trump-as-long-as-no-one-else-runs/
 
 ## Code Chunks
 
 ```{r Import}
-polls <- read_csv()
+pollsOG <- read_csv("")
+polls
+names(polls)
+```
+
+```{r Reduction}
+
+polls <- pollsOG %>% select(state,party,candidate_name,answer,pct,start_date,end_date,sample_size,election_date,sponsors,pollster,sponsors,methodology,sponsor_candidate,sponsor_candidate_party,seat_name)
+polls
 ```
 
