@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-###Packages
+### Packages
 Tidyverse: https://www.tidyverse.org/
 
 # Introduction  
@@ -57,4 +57,4 @@ g + geom_bar(stat="identity") +xlab("Average Poll Percentage") +ylab("Candidate"
 ```
 
 ## Conclusions  
-I think from here I would continue along the route of the article and start learning about each poll. How did they phrase the questions? I'd like to confirm the idea that despite DeSantis' seemingly lacking polling percentage could be overcome by having a head to head race vs Trump. I would need to create another column with an identifier explaining which were "1v1" vs "FFA" and start to only compare "1v1" polls.
+I think from here I would continue along the route of the article and start learning about each poll. How did they phrase the questions? I'd like to confirm the idea that despite DeSantis' seemingly lacking polling percentage could be overcome by having a head to head race vs Trump. I would need to create another column with an identifier explaining which were "1v1" vs "FFA" and start to only compare "1v1" polls. 
