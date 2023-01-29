@@ -8,26 +8,53 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(knitr)
-
 ```
+
+###Packages
+Tidyverse: https://www.tidyverse.org/
 
 # Introduction  
   
 The following dataset was pulled from data.thirtyeightfive.com as a series of polls for House Candidates within each state. I'd like to filter out some unnecessary columns and focus primarily on State, Candidate, Dates, Sample Size,Party, and Percent to get this dataset ready for some deeper analysis.
-https://fivethirtyeight.com/features/desantis-is-polling-well-against-trump-as-long-as-no-one-else-runs/
+https://fivethirtyeight.com/features/desantis-is-polling-well-against-trump-as-long-as-no-one-else-runs/  
+  
+## Article Specifics
+This is more of an observational study than any kind of predictor/independent relationship. I'm sure you could use the state as an indicator since this contains both REP and DEM. My article is specifically about the nature of REP polling. Some of these polls frame a republican primary race between all candidates, and other frame it as just a race between Trump and Desantis. I wanted to get an idea of all the candidates across parties and polls to get an idea of the "big" picture for those who have not been keeping up with primaries and support for candidates.
 
 ## Code Chunks
 
 ```{r Import}
-pollsOG <- read_csv("")
-polls
-names(polls)
+pollsOG <- read_csv("https://github.com/d-ev-craig/DATA607/raw/main/Week%201%20-%20Data%20Structures%20%26%20Basic%20Ops/president_primary_polls.csv")
+names(pollsOG)
+pollsOG
 ```
 
 ```{r Reduction}
 
-polls <- pollsOG %>% select(state,party,candidate_name,answer,pct,start_date,end_date,sample_size,election_date,sponsors,pollster,sponsors,methodology,sponsor_candidate,sponsor_candidate_party,seat_name)
-polls
+polls <- pollsOG %>% select(state,party,candidate_name,pct,start_date,end_date,pollster,methodology,office_type,stage)
+polls %>% group_by(candidate_name) %>% arrange(desc(pct),by_group = TRUE)
+
+avgPolls <-polls %>% group_by(candidate_name) %>% summarise(mean(pct))
+
+avgPolls <- avgPolls %>% arrange(desc(avgPolls[2]))
+avgPolls
+
+names(avgPolls)[2] <- 'avgPct'
+
+avgPolls[1] <- unlist(avgPolls[1])
+avgPolls[2] <- unlist(avgPolls[2])
+
+avgPolls <- as.data.frame(avgPolls)
+
+avgPolls <-head(avgPolls, n=10)
+avgPolls
 ```
 
+```{r Graph}
+g<-ggplot(data=avgPolls,aes(y=candidate_name,x=avgPct,fill=candidate_name)) 
+
+g + geom_bar(stat="identity") +xlab("Average Poll Percentage") +ylab("Candidate")+theme(legend.position = "none")
+```
+
+## Conclusions  
+I think from here I would continue along the route of the article and start learning about each poll. How did they phrase the questions? I'd like to confirm the idea that despite DeSantis' seemingly lacking polling percentage could be overcome by having a head to head race vs Trump. I would need to create another column with an identifier explaining which were "1v1" vs "FFA" and start to only compare "1v1" polls.
