@@ -19,7 +19,9 @@ The following dataset was pulled from data.thirtyeightfive.com as a series of po
 https://fivethirtyeight.com/features/desantis-is-polling-well-against-trump-as-long-as-no-one-else-runs/  
   
 ## Article Specifics
-This is more of an observational study than any kind of predictor/independent relationship. I'm sure you could use the state as an indicator since this contains both REP and DEM. My article is specifically about the nature of REP polling. Some of these polls frame a republican primary race between all candidates, and other frame it as just a race between Trump and Desantis. I wanted to get an idea of all the candidates across parties and polls to get an idea of the "big" picture for those who have not been keeping up with primaries and support for candidates.
+This is more of an observational study than any kind of predictor/independent relationship. I'm sure you could use the state as an indicator since this contains both REP and DEM. My article is specifically about the nature of REP polling. Some of these polls frame a republican primary race between all candidates, and other frame it as just a race between Trump and Desantis. I wanted to get an idea of all the candidates across parties and polls to get an idea of the "big" picture for those who have not been keeping up with primaries and support for candidates.  
+  
+RPubs:https://rpubs.com/devcraig/DATA607as1
 
 ## Code Chunks
 
