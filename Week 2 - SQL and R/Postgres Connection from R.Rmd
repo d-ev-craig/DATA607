@@ -1,0 +1,84 @@
+---
+title: "Week2 Postgres SQL"
+author: "Daniel Craig"
+date: "2023-02-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DBI)
+```
+
+# Intro  
+  
+This R Markdown is for connecting to a locally hosted Postgres server using the following packages:
+RPostgreSQL
+RPostgres  
+  
+These can be installed with the typical 'install.packages("RPostgreSQL")  
+  
+These packages will give access to the following important commands:  
+ - dbListTables  
+ - dbGetQuery  
+  
+The database we will be connecting to contain data about friends and family ratings of popular/noteworthy 2022 movies and importing that data into a dataframe. All participants were asked to rate movies on a 1 to 5 scale with 5 being the highest rating. Some users had not seen the movie and their data was stored as null values. I allowed NULL values when creating the tables for only the Rating column.
+  
+## Setup  
+  
+First, let's establish variables to make connections easy when making our connection call.  
+  
+I used Postgres to host a SQL Server on my local machine and PSQL to create my tables. I have experience with MS SQL Server and am much more comfortable in that.  
+  
+I created a Movies table to house names of movies and created a foreign key constraint from my survey results to ensure that the result was from one of the movies selected.  
+  
+I think next time I will also include another ratings table for valid ratings and potentially a user table to also require those.
+
+
+```{r Variable Setup}
+library(DBI)
+
+db <- "cunydata607"
+db_host <- "localhost"
+db_port <- "5432"
+db_user <- "postgres"
+db_pass <- "SuperB!ounce340"
+
+conn <- dbConnect(
+  RPostgres::Postgres(),
+  dbname = db,
+  host = db_host,
+  port = db_port,
+  user = db_user,
+  password = db_pass
+)
+```
+
+## Connect
+
+Let's check our connection and ensure it's working with dbListTables
+
+```{r Test Con, echo=FALSE}
+dbListTables(conn)
+```
+  
+You should have returned a week2_movies tablename.Let's pull our data!
+
+```{r Pull}
+dbGetQuery(conn, "SELECT * FROM week2_movies")
+```
+  
+Now that we can pull the info, let's store this in a dataframe in R to play with.  
+  
+```{r Store}
+movies <- dbGetQuery(conn, "SELECT * FROM week2_movies")
+movies
+```
+
+A note on null values:  
+  
+When creating the database, I determined that any movies that had not been seen by an individual would be stored as a NULL value and when running any analysis would exclude the values.  
+  
+A note on ratings:  
+  
+All participants were asked to rate movies on a 1 to 5 scale with 5 being the highest rating.
