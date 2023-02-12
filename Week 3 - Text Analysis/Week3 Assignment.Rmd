@@ -1,0 +1,89 @@
+---
+title: "Week3 Character Manipulation"
+author: "Daniel Craig"
+date: "2023-02-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+library(stringr)
+
+majors <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%203%20-%20Text%20Analysis/majors.csv")
+```
+# Intro  
+  
+This assignment is focused on manipulating text and characters to develop skills working with strings. The article used as a base to introduce the college majors can be found here: https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/  
+  
+The underlying data and github page can be found at the following respective locations:  
+https://github.com/fivethirtyeight/data/tree/master/college-majors  
+https://github.com/fivethirtyeight/data/blob/master/college-majors/majors-list.csv
+
+## Packages  
+We will stick with the tidyverse, mainly dplyr, and readr for read_csv. I'm more comfortable with readr's csv and prefer it over read.csv
+
+### 1. Filtering for a string match
+```{r}
+
+filterMajor <- majors %>% filter(str_detect(majors$Major,"DATA|STATISTICS"))
+
+filterMajor$Major
+
+
+```
+
+### 2. Subsetting, String Combination
+```{r}
+
+foods <- c("bell pepper","bilberry","blackberry","blood orange","blueberry","cantaloupe","chili pepper","cloudberry","elderberry","lime","lychee","mulberry","olive","salal berry")
+
+
+test2 <- str_c('"',foods,'"',',', collapse = "")
+test2sub <- substring(test2,1,str_length(test2)-1)
+test2Final <- str_c('c(',test2sub,')')
+writeLines(test2Final)
+
+
+#Goal:
+#c("bell pepper", "bilberry", "blackberry", "blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry")
+
+```
+
+### 3.  RegEx + Strings  
+
+Describe, in words, what these expressions will match:  
+(.)\1\1 : This is a regular expression that looks for any letter that repeats itself 3 times total. ie. 'aaa' or 'bbb'  
+  
+"(.)(.)\\2\\1" : This is a string that represents a regular expression that would look for any two letters (letter 1 and letter 2), that repeat themselves in reverse order. ie. 'abba', 'baab', etc.  
+  
+(..)\1 : This is a regular expression that would look for any two letters that then repeat themselves, ie. 'coco', 'nana'  
+
+"(.).\\1.\\1" : This is a string representing a regular expression that would look for any letter, followed by any letter, followed by the first letter, followed by any letter, followed by the first letter. ie. 'abaca', this could catch things like 'aaaa' as well.  
+  
+"(.)(.)(.).*\\3\\2\\1" : This is a string representing a regular expression that looks for any three letters followed by a 4th letter that could repeat 0 or more times and is then followed by the first three letters in reverse order. ie. 'abcdcba' or 'abcdabcabcabccba'  
+
+
+### 4. Construct regular expressions to match words that:  
+  
+Start and end with the same character. : ^(.).*\\1$  
+```{r}
+
+str_subset(words,"^(.).*\\1$")
+
+
+```
+
+Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.) : (..).*\\1  
+```{r}
+str_subset(words, "(..).*\\1")
+```
+
+Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)   : (.).*\1.*\1.*
+
+```{r}
+str_subset(words,"(.).*\\1.*\\1.*")
+```
+
+
