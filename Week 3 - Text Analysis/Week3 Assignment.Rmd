@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readr)
 library(stringr)
+  
+
 
 majors <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%203%20-%20Text%20Analysis/majors.csv")
 ```
@@ -19,7 +21,10 @@ This assignment is focused on manipulating text and characters to develop skills
   
 The underlying data and github page can be found at the following respective locations:  
 https://github.com/fivethirtyeight/data/tree/master/college-majors  
-https://github.com/fivethirtyeight/data/blob/master/college-majors/majors-list.csv
+https://github.com/fivethirtyeight/data/blob/master/college-majors/majors-list.csv  
+  
+Useful source: https://r4ds.had.co.nz/strings.html#other-uses-of-regular-expressions
+This is chapter 14 of R for Data Science
 
 ## Packages  
 We will stick with the tidyverse, mainly dplyr, and readr for read_csv. I'm more comfortable with readr's csv and prefer it over read.csv

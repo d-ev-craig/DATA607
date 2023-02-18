@@ -1,0 +1,76 @@
+---
+title: "Hands on Lab: ggplot2"
+author: "Catlin"
+date: "September 15, 2015"
+output: html_document
+---
+
+1. Load the diamonds dataset, which is included with the ggplot2 package.  Identify which variables in the diamond set are numeric, and which are categorical (factors).
+
+```{r}
+#install.packages("ggplot2")
+require(ggplot2)
+head(diamonds)
+
+# Identify which variables in the diamonds dataset are numeric, and which
+# variables are categorical
+str(diamonds)
+```
+
+## Generate Descriptive Statistics
+
+2. Generate summary level descriptive statistics:  Show the mean, median, 25th and 75th quartiles, min, and max for each of the applicable variables in diamonds.
+
+See also [http://www.statmethods.net/stats/frequencies.html]
+
+```{r}
+summary(diamonds)
+```
+
+3. Determine the frequency for each of the diamond colors.
+Run the table() function against a single categorical variable
+See also: http://www.statmethods.net/stats/frequencies.html
+
+```{r]}
+table(diamonds$color)
+```
+
+4. Determine the frequency for each of the diamond cuts, by color.
+
+```{r}
+# Run the table() function against two categorical variables.
+table(diamonds$color, diamonds$cut)
+```
+
+##R Graphics
+
+5. Create a graph for a single numeric variable.
+
+First, in base R.
+
+```{r}
+boxplot(diamonds$price)
+hist(diamonds$price)
+```
+
+Look at the same single numeric variable, in ggplot2.
+
+```{r}
+# ggplot2:
+qplot(price, data=diamonds)
+```
+
+6. Create a scatterplot of two numeric variables.
+
+First, in base R:
+
+```{r}
+plot(diamonds$price ~ diamonds$carat)
+```
+
+Look at the same scatterplot in ggplot2.  Note that the order of carat and price are reversed.
+
+```{r}
+qplot(carat, price, data=diamonds)
+```
+

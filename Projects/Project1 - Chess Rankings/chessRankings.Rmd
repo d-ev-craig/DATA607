@@ -1,0 +1,74 @@
+---
+title: "Project1-ChessRankings"
+author: "Daniel Craig"
+date: "2023-02-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidyr)
+```
+
+
+```{r}
+file <- "C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Projects\\Project1 - Chess Rankings\\chessRankings.txt"
+data<-readLines(file)
+garbage<-seq(1,196, by = 3)
+data<-data[-(garbage)]
+data<-data.frame(data)
+
+dataTibble <- tibble(1:130,data[,1])
+names(dataTibble)[2] <- 'chessText'
+
+
+data4<-separate_wider_delim(dataTibble,cols=chessText,delim="|",names = c('playerID','playerName','Total','r1','r2','r3','r4','r5','r6','r7','blank'))
+
+data4
+```
+```{r oddRows}
+oddRows <- data4 %>% filter(row_number() %% 2 == 1)
+evenRows <- data4 %>% filter(row_number() %% 2 == 0)
+oddRows <- oddRows[-1,]
+oddRows <- oddRows[,-12]
+
+oddRows
+#oddRows[,11] <- trimws(oddRows[,11])
+
+#separate_wider_delim(oddRows,cols=c(r1), delim=" ", names = c('rResult','rID'),too_many = "debug")
+
+oddRows <- separate_wider_position(oddRows,cols=c(r1), c(r1Result = 1,1, r1ID = 3))
+oddRows <- separate_wider_position(oddRows,cols=c(r2), c(r2Result = 1,1, r2ID = 3))
+oddRows <- separate_wider_position(oddRows,cols=c(r3), c(r3Result = 1,1, r3ID = 3))
+oddRows <- separate_wider_position(oddRows,cols=c(r4), c(r4Result = 1,1, r4ID = 3))
+oddRows <- separate_wider_position(oddRows,cols=c(r5), c(r5Result = 1,1, r5ID = 3))
+oddRows <- separate_wider_position(oddRows,cols=c(r6), c(r6Result = 1,1, r6ID = 3))
+oddRows <- separate_wider_position(oddRows,cols=c(r7), c(r7Result = 1,1, r7ID = 3))
+
+
+oddRows
+
+
+
+```
+```{r evenRows}
+#Our goal here is to grab the player's pre-rating and state. Pre-rating will require some string manipulation
+
+evenRows <- evenRows[-1,]
+
+evenRows <- separate_wider_delim(evenRows,cols=c(playerName), delim=":", names = c('uscfID','ratings'))
+
+evenRows <- separate_wider_delim(evenRows,cols=c(ratings), delim="->", names = c('preRating','postRating'))
+
+evenRows$preRating
+
+evenRows$preRating <- str_replace_all(evenRows$preRating, "([A-Z]|[a-z])[^.]*$","")
+evenRows$postRating <- str_replace_all(evenRows$preRating, "([A-Z]|[a-z])[^.]*$","")
+#Here we want to remove any characters that follow the pattern of a letter followed by any character/number that can repeat itself any number of times. I tried my best to future proof this in case ELO's start to get into 5 digits (probably possible in the coming years via AI). If I didn't want to future proof, I would've removed based on position .
+
+```
+```{r Combining}
+
+```
+
