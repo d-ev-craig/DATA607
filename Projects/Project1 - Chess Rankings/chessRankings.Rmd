@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidyr)
+library(sqldf)
 ```
 
 
@@ -25,9 +26,13 @@ names(dataTibble)[2] <- 'chessText'
 
 data4<-separate_wider_delim(dataTibble,cols=chessText,delim="|",names = c('playerID','playerName','Total','r1','r2','r3','r4','r5','r6','r7','blank'))
 
+
+
 data4
 ```
 ```{r oddRows}
+data4
+
 oddRows <- data4 %>% filter(row_number() %% 2 == 1)
 evenRows <- data4 %>% filter(row_number() %% 2 == 0)
 oddRows <- oddRows[-1,]
@@ -47,8 +52,6 @@ oddRows <- separate_wider_position(oddRows,cols=c(r6), c(r6Result = 1,1, r6ID = 
 oddRows <- separate_wider_position(oddRows,cols=c(r7), c(r7Result = 1,1, r7ID = 3))
 
 
-oddRows
-
 
 
 ```
@@ -61,14 +64,127 @@ evenRows <- separate_wider_delim(evenRows,cols=c(playerName), delim=":", names =
 
 evenRows <- separate_wider_delim(evenRows,cols=c(ratings), delim="->", names = c('preRating','postRating'))
 
-evenRows$preRating
+evenRows
 
 evenRows$preRating <- str_replace_all(evenRows$preRating, "([A-Z]|[a-z])[^.]*$","")
-evenRows$postRating <- str_replace_all(evenRows$preRating, "([A-Z]|[a-z])[^.]*$","")
+evenRows$postRating <- str_replace_all(evenRows$postRating, "([A-Z]|[a-z])[^.]*$","")
 #Here we want to remove any characters that follow the pattern of a letter followed by any character/number that can repeat itself any number of times. I tried my best to future proof this in case ELO's start to get into 5 digits (probably possible in the coming years via AI). If I didn't want to future proof, I would've removed based on position .
 
-```
-```{r Combining}
+
 
 ```
+
+```{r Combining}
+oddRows
+evenRows
+result <- bind_cols(evenRows,oddRows)
+
+
+```
+```{r Removing excess}
+#Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
+
+result <- result[,c(-1,-3,-6,-(14:15))]
+result<-select(result, playerState=playerID...2,playerID=playerID...16,playerName,preRating,postRating,Total...18,r1,r1Result,r1ID,r2,r2Result,r2ID,r3,r3Result,r3ID,r4,r4Result,r4ID,r5,r5Result,r5ID,r6,r6Result,r6ID,r7,r7Result,r7ID)
+
+# Below lines are where I tried to do add a column by performing a 'vlookup' in R but across columns with different names, but similar values. The idea was to use r1ID's column's values to lookup the playerID column and select its appropriate preRating. All functions/methods I found required a column with the same name and since I can't have duplicate column names in my df I can't perform it via self join. I also don't want to make a separate lookup table to perform this action because I think it'd be more efficient this way.
+
+# resultCondensed<-select(result, playerID...16,playerName,preRating,postRating,Total...18,r1ID,r2ID,r3ID,r4ID,r5ID,r6ID,r7ID)
+# resultAvgOpp <- mutate(resultCondensed,avgOpp = merge(resultCondensed,resultCondensed, by = playerID...16) )
+
+## Duplicating the rdID columns so that there is a column in common to perform the merge on (will test using by.x and by.y later)
+lookupResult<- select(result,playerID,preRating)
+# lookupResult <-mutate(lookupResult, r1ID=playerID)
+# lookupResult<- mutate(lookupResult, r2ID = r1ID)
+# lookupResult<- mutate(lookupResult, r3ID = r1ID)
+# lookupResult<- mutate(lookupResult, r4ID = r1ID)
+# lookupResult<- mutate(lookupResult, r5ID = r1ID)
+# lookupResult<- mutate(lookupResult, r6ID = r1ID)
+# lookupResult<- mutate(lookupResult, r7ID = r1ID)
+
+#Dropping unnecessary playerID column since it won't be referenced in the later merge
+#lookupResult<-lookupResult[,-1]
+
+#Trimming whitespace from column to ensure a merge later down the road doesn't get blocked
+
+
+
+result
+lookupResult
+names(lookupResult)[1] <- 'playerID'
+names(lookupResult)[2] <- 'oppRating'
+
+```
+
+
+```{r lookup table Prep}
+
+# Checking values between cells since if they're off or have hidden whitespace it won't match with merge
+# nchar(result[1,8])
+# nchar(rd1lookupResult[1,2])
+
+result$r1ID<-trimws(result$r1ID,which='both')
+result$r2ID<-trimws(result$r2ID,which='both')
+result$r3ID<-trimws(result$r3ID,which='both')
+result$r4ID<-trimws(result$r4ID,which='both')
+result$r5ID<-trimws(result$r5ID,which='both')
+result$r6ID<-trimws(result$r6ID,which='both')
+result$r7ID<-trimws(result$r7ID,which='both')
+lookupResult$playerID<-trimws(lookupResult$playerID,which='both')
+lookupResult
+result
+#newResult
+
+newResult<- result %>% merge(lookupResult, by.x='r1ID',by.y='playerID') %>% rename(c("rd1OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r2ID',by.y='playerID') %>% rename(c("rd2OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r3ID',by.y='playerID') %>% rename(c("rd3OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r4ID',by.y='playerID') %>% rename(c("rd4OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r5ID',by.y='playerID') %>% rename(c("rd5OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r6ID',by.y='playerID') %>% rename(c("rd6OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r7ID',by.y='playerID') %>% rename(c("rd7OppRating"="oppRating")) %>% arrange(playerID)
+newResult <- newResult %>% rename(c("totalPoints"="Total...18"))
+newResult
+```
+
+```{r Cutting Out Excess}
+### PICK UP HERE YOU NEED TO CHANGE THE rdOppRating columns to numeric!
+#Attempts at changing each of the OppRating columns to numeric without having to make a line for each column
+# oppRatings <- newResult %>% select(matches (".[0-9]OppRating")) %>% colnames()
+# oppRatings
+# 
+# 
+# test<- sapply(select(newResult,(oppRatings)),as.numeric)
+# test
+
+
+newResult$rd1OppRating <- as.numeric(newResult$rd1OppRating)
+newResult$rd2OppRating <- as.numeric(newResult$rd2OppRating)
+newResult$rd3OppRating <- as.numeric(newResult$rd3OppRating)
+newResult$rd4OppRating <- as.numeric(newResult$rd4OppRating)
+newResult$rd5OppRating <- as.numeric(newResult$rd5OppRating)
+newResult$rd6OppRating <- as.numeric(newResult$rd6OppRating)
+newResult$rd7OppRating <- as.numeric(newResult$rd7OppRating)
+
+newResult
+
+avgOpp <- newResult %>% mutate(avgOpp = rowMeans(select(.,rd1OppRating:rd7OppRating)))
+
+#Could this work for the numeric conversion on all columns?
+is.dub <- sapply(avgOpp, is.double)
+avgOpp[is.dub] <- lapply(avgOpp[is.dub], round, 0)
+
+
+
+#Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
+
+
+
+finalCSV<-avgOpp[,c('playerName','playerState','totalPoints','preRating','avgOpp')]
+
+write_csv(finalCSV,"C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Projects\\Project1 - Chess Rankings\\finalCSV.csv")
+
+
+```
+
+
 
