@@ -1,0 +1,193 @@
+---
+title: "Project1-ChessRankings"
+author: "Daniel Craig"
+date: "2023-02-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidyr)
+library(sqldf)
+```
+
+
+```{r}
+#Standard
+file <- "C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Projects\\Project1 - Chess Rankings\\chessRankings.txt"
+data<-readLines(file)
+garbage<-seq(1,196, by = 3)
+data<-data[-(garbage)]
+data<-data.frame(data)
+
+dataTibble <- tibble(1:130,data[,1])
+
+
+names(dataTibble)[2] <- 'chessText'
+
+#Attempts at generalizing this to work on a tournament of any number of rounds of Chess
+#Method2
+numRounds <- str_count(dataTibble[1,2], 'Round')
+
+#Set the number of times we counted the word 'Round' to a variable and combine it with 'r' to create our column names to separate columns out based on the number of rounds in the chess tournament
+roundText <- seq(from=1, to=numRounds,by =1)
+roundText <- str_c('r',roundText)
+roundText
+
+
+#Method1
+# data4<-separate_wider_delim(dataTibble,cols=chessText,delim="|",names = c('playerID','playerName','Total','r1','r2','r3','r4','r5','r6','r7','blank'))
+
+#Separate string data into columns and using our variable number of Rounds text as names for columns
+data4<-separate_wider_delim(dataTibble,cols=chessText,delim="|",names = c('playerID','playerName','Total',roundText,'blank'))
+
+
+data4
+```
+```{r oddRows}
+data4
+
+#Removing unnecessary columns
+oddRows <- data4 %>% filter(row_number() %% 2 == 1) %>% select(-blank,-'1:130') %>% slice(-1)
+evenRows <- data4 %>% filter(row_number() %% 2 == 0) %>% select(-blank, -'1:130')%>%slice(-1)
+
+oddRows
+
+#Apply str_replace_all to each column of interest and keeping it dynamic in case rounds played aren't always 7
+col <- colnames(oddRows[,4:(3+numRounds)])
+oddRows[col] <- apply(oddRows[col],MARGIN =2, function(x) str_replace_all(x, "[WLDB] ", ""))
+
+oddRows[col] <- apply(oddRows[col],2, function(x) as.numeric(x))
+
+```
+```{r evenRows}
+#Our goal here is to grab the player's pre-rating and state. Pre-rating will require some string manipulation
+# First we remove the extra tables and rename them to be accurate
+evenRows <- evenRows[,c(1,2)]
+evenRows <- rename(evenRows,playerState = playerID)
+
+
+#separate out our playerName column to section out our ratings
+evenRows <- separate_wider_delim(evenRows,cols=c(playerName), delim=":", names = c('uscfID','ratings'))
+
+#perform again to split our pre and post ratings from the ratings column we just made
+evenRows <- separate_wider_delim(evenRows,cols=c(ratings), delim="->", names = c('preRating','postRating'))
+
+#Here we want to remove any characters that follow the pattern of a letter followed by any character/number that can repeat itself any number of times. I tried my best to future proof this in case ELO's start to get into 5 digits (probably possible in the coming years via AI). If I didn't want to future proof, I would've removed based on position.
+evenRows$preRating <- str_replace_all(evenRows$preRating, "([A-Z]|[a-z])[^.]*$","")
+evenRows$postRating <- str_replace_all(evenRows$postRating, "([A-Z]|[a-z])[^.]*$","")
+
+#Dropping excess columns
+evenRows <- evenRows %>% select(-uscfID,-postRating)
+
+```
+
+```{r Combining}
+
+result <- bind_cols(evenRows,oddRows)
+result
+```
+
+
+```{r Calculate avgOpp}
+#Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
+
+
+# Below lines are where I tried to do add a column by performing a 'vlookup' in R but across columns with different names, but similar values. The idea was to use r1ID's column's values to lookup the playerID column and select its appropriate preRating. All functions/methods I found required a column with the same name and since I can't have duplicate column names in my df I can't perform it via self join. I also don't want to make a separate lookup table to perform this action because I think it'd be more efficient this way.
+
+# resultCondensed<-select(result, playerID...16,playerName,preRating,postRating,Total...18,r1ID,r2ID,r3ID,r4ID,r5ID,r6ID,r7ID)
+# resultAvgOpp <- mutate(resultCondensed,avgOpp = merge(resultCondensed,resultCondensed, by = playerID...16) )
+
+## Duplicating the rdID columns so that there is a column in common to perform the merge on (will test using by.x and by.y later)
+lookupResult<- select(result,playerID,preRating)
+# lookupResult <-mutate(lookupResult, r1ID=playerID)
+# lookupResult<- mutate(lookupResult, r2ID = r1ID)
+# lookupResult<- mutate(lookupResult, r3ID = r1ID)
+# lookupResult<- mutate(lookupResult, r4ID = r1ID)
+# lookupResult<- mutate(lookupResult, r5ID = r1ID)
+# lookupResult<- mutate(lookupResult, r6ID = r1ID)
+# lookupResult<- mutate(lookupResult, r7ID = r1ID)
+
+#Dropping unnecessary playerID column since it won't be referenced in the later merge
+#lookupResult<-lookupResult[,-1]
+
+#Trimming whitespace from column to ensure a merge later down the road doesn't get blocked
+lookupResult
+names(lookupResult)[2] <- 'oppRating'
+lookupResult$playerID<-trimws(lookupResult$playerID,which='both')
+result
+lookupResult
+```
+
+
+```{r lookup table Prep}
+
+result
+#Attempts at getting this to be dynamic. The process is as follows, I need to merge my tables to add in the appropriate opponent rating for each round for each player. Afterwards, I need to rename that column before I can perform another lookup for the next round.Recall that our current table has the following for columns: playerState,preRating,playerID,playerName,Total,r1,r2,..
+#When I perform the merge for the values in r1.. I add a column called oppRating which needs to be dynamically named so that there aren't conflicts when this process repeats and names for multiple rounds.
+#Attempts: 
+#1. Using rename(), rename would throw an error stating the '=' was unexpected, I assume this is due to my attempt at dynamically naming it based off the current column in question.
+#2. Tried to pass three total vectors as variables into a homebrew function via apply and hoped R would process the first value of each variables' vector of values, and then the 2nd value in the list of variable vectors... etc. I was able to successfully generate the names dynamically based on dataframe dimensions and column names, but had issues getting apply to recognize all my variables. You'll notice that there are some values that are hard coded to test some things. I was running out of time for this.
+
+#My valiant attempts' remains are below
+
+# colResult <- colnames(result[,6:(5+numRounds)])
+# xVar <- colnames(result[,6:(5+numRounds)])
+# yVar <- str_c(xVar,'oppRating')
+# yVar
+# work <- merge(result,lookupResult,by.x='r1',by.y='playerID') %>% rename(work,str_c('"r1','oppRating"') ='oppRating'))
+# myFun <- function(data,x){
+#   merge(data,lookupResult,by.x="r1",by.y='playerID')}
+
+# newResult <- 
+#   apply(result[colResult], MARGIN =2,FUN= myFun,x=xVar,y=yVar)
+#   
+#   result %>% merge(lookupResult, by.x = )
+
+
+#newResult
+
+newResult<- result %>% merge(lookupResult, by.x='r1',by.y='playerID') %>% rename(c("rd1OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r2',by.y='playerID') %>% rename(c("rd2OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r3',by.y='playerID') %>% rename(c("rd3OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r4',by.y='playerID') %>% rename(c("rd4OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r5',by.y='playerID') %>% rename(c("rd5OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r6',by.y='playerID') %>% rename(c("rd6OppRating"="oppRating")) %>% arrange(playerID)
+newResult<- newResult %>% merge(lookupResult, by.x='r7',by.y='playerID') %>% rename(c("rd7OppRating"="oppRating")) %>% arrange(playerID)
+newResult <- newResult %>% rename(c("totalPoints"="Total"))
+
+
+#Drop the added merged cols
+newResult <- newResult[,-(1:(numRounds))]
+as.numeric(newResult[,6:(5+numRounds)])
+```
+
+```{r Cutting Out Excess}
+
+newResult[,6:(5+numRounds)] <- apply(newResult[,6:(5+numRounds)],2, function(x) as.numeric(x))
+
+
+# isNum <- sapply(newResult, as.numeric)
+# avgOpp[isNum] <- lapply(avgOpp[isNum], round, 0)
+
+
+avgOpp <- newResult %>% mutate(avgOpp = rowMeans(select(.,rd1OppRating:rd7OppRating)))
+
+#Round all values
+ is.dub <- sapply(avgOpp, is.double)
+ avgOpp[is.dub] <- lapply(avgOpp[is.dub], round, 0)
+
+avgOpp
+
+#Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
+
+finalCSV<-avgOpp[,c('playerName','playerState','totalPoints','preRating','avgOpp')]
+
+write_csv(finalCSV,"C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Projects\\Project1 - Chess Rankings\\finalCSV.csv")
+
+
+```
+
+
+

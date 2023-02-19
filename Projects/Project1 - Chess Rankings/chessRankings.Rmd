@@ -21,7 +21,10 @@ data<-data[-(garbage)]
 data<-data.frame(data)
 
 dataTibble <- tibble(1:130,data[,1])
+
+#Attempts at generalizing this to work on a tournament of any number of rounds of Chess
 names(dataTibble)[2] <- 'chessText'
+numRounds <- str_count(dataTibble[1,2], 'Round')
 
 
 data4<-separate_wider_delim(dataTibble,cols=chessText,delim="|",names = c('playerID','playerName','Total','r1','r2','r3','r4','r5','r6','r7','blank'))
@@ -38,10 +41,6 @@ evenRows <- data4 %>% filter(row_number() %% 2 == 0)
 oddRows <- oddRows[-1,]
 oddRows <- oddRows[,-12]
 
-oddRows
-#oddRows[,11] <- trimws(oddRows[,11])
-
-#separate_wider_delim(oddRows,cols=c(r1), delim=" ", names = c('rResult','rID'),too_many = "debug")
 
 oddRows <- separate_wider_position(oddRows,cols=c(r1), c(r1Result = 1,1, r1ID = 3))
 oddRows <- separate_wider_position(oddRows,cols=c(r2), c(r2Result = 1,1, r2ID = 3))
@@ -50,8 +49,6 @@ oddRows <- separate_wider_position(oddRows,cols=c(r4), c(r4Result = 1,1, r4ID = 
 oddRows <- separate_wider_position(oddRows,cols=c(r5), c(r5Result = 1,1, r5ID = 3))
 oddRows <- separate_wider_position(oddRows,cols=c(r6), c(r6Result = 1,1, r6ID = 3))
 oddRows <- separate_wider_position(oddRows,cols=c(r7), c(r7Result = 1,1, r7ID = 3))
-
-
 
 
 ```
@@ -64,22 +61,20 @@ evenRows <- separate_wider_delim(evenRows,cols=c(playerName), delim=":", names =
 
 evenRows <- separate_wider_delim(evenRows,cols=c(ratings), delim="->", names = c('preRating','postRating'))
 
-evenRows
 
 evenRows$preRating <- str_replace_all(evenRows$preRating, "([A-Z]|[a-z])[^.]*$","")
 evenRows$postRating <- str_replace_all(evenRows$postRating, "([A-Z]|[a-z])[^.]*$","")
 #Here we want to remove any characters that follow the pattern of a letter followed by any character/number that can repeat itself any number of times. I tried my best to future proof this in case ELO's start to get into 5 digits (probably possible in the coming years via AI). If I didn't want to future proof, I would've removed based on position .
 
 
-
+evenRows
 ```
 
 ```{r Combining}
-oddRows
-evenRows
+
 result <- bind_cols(evenRows,oddRows)
 
-
+result
 ```
 ```{r Removing excess}
 #Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
@@ -107,10 +102,6 @@ lookupResult<- select(result,playerID,preRating)
 
 #Trimming whitespace from column to ensure a merge later down the road doesn't get blocked
 
-
-
-result
-lookupResult
 names(lookupResult)[1] <- 'playerID'
 names(lookupResult)[2] <- 'oppRating'
 
@@ -131,8 +122,7 @@ result$r5ID<-trimws(result$r5ID,which='both')
 result$r6ID<-trimws(result$r6ID,which='both')
 result$r7ID<-trimws(result$r7ID,which='both')
 lookupResult$playerID<-trimws(lookupResult$playerID,which='both')
-lookupResult
-result
+
 #newResult
 
 newResult<- result %>% merge(lookupResult, by.x='r1ID',by.y='playerID') %>% rename(c("rd1OppRating"="oppRating")) %>% arrange(playerID)
@@ -143,7 +133,7 @@ newResult<- newResult %>% merge(lookupResult, by.x='r5ID',by.y='playerID') %>% r
 newResult<- newResult %>% merge(lookupResult, by.x='r6ID',by.y='playerID') %>% rename(c("rd6OppRating"="oppRating")) %>% arrange(playerID)
 newResult<- newResult %>% merge(lookupResult, by.x='r7ID',by.y='playerID') %>% rename(c("rd7OppRating"="oppRating")) %>% arrange(playerID)
 newResult <- newResult %>% rename(c("totalPoints"="Total...18"))
-newResult
+
 ```
 
 ```{r Cutting Out Excess}
@@ -165,7 +155,6 @@ newResult$rd5OppRating <- as.numeric(newResult$rd5OppRating)
 newResult$rd6OppRating <- as.numeric(newResult$rd6OppRating)
 newResult$rd7OppRating <- as.numeric(newResult$rd7OppRating)
 
-newResult
 
 avgOpp <- newResult %>% mutate(avgOpp = rowMeans(select(.,rd1OppRating:rd7OppRating)))
 
@@ -174,10 +163,7 @@ is.dub <- sapply(avgOpp, is.double)
 avgOpp[is.dub] <- lapply(avgOpp[is.dub], round, 0)
 
 
-
 #Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
-
-
 
 finalCSV<-avgOpp[,c('playerName','playerState','totalPoints','preRating','avgOpp')]
 
