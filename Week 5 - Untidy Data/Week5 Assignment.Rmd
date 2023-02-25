@@ -6,27 +6,37 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 library(tidyverse)
 ```
-
+Let's take a first look at what the data looks like before we clean it up.
 ```{r}
 untidyData <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%205%20-%20Untidy%20Data/untidyData.csv")
+untidyData
+```
 
+So it looks like we have a variable in airline, a variable in arrival (on time vs delayed), a variable in what I'm assuming is time as the cell values under the destination cities and there's also the variable of destination itself. If these are counts of how many times flights are delayed then instead of time, it would be count as the variable. I would ask the provider of the data for clarification, but I interpret this as, if it was delayed, the time column represents by how long. If the flight was on time, the time is the duration of the flight.
+
+```{r}
 untidyData[2,1] <- 'Alaska'
 untidyData <- untidyData[-3,]
 untidyData[4,1] <- 'AM WEST'
 
 pivotLong <- untidyData %>% pivot_longer(cols = c('Los Angeles','Phoenix','San Diego','San Francisco', 'Seattle'), names_to= 'Destination',values_to = 'Time')
 
-pivotLong
-
 names(pivotLong)[1] <- 'airline'
 names(pivotLong)[2] <- 'arrivalCategory'
+
+pivotLong
+```
+
+Just for the sake of cleanliness I am going to filter out for only delayed flights and generate my plot off that dataframe rather than do in-line computations.
+```{r}
 
 delays <- pivotLong %>% filter(arrivalCategory == 'delayed')
 delays
 ```
+
 
 One could make an off the cuff evaluation and use Alaska for all destinations except Seattle.
 ```{r}
