@@ -9,18 +9,21 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidyr)
-library(sqldf)
+library(git2rdata)
 ```
 
 
 ```{r}
 #Standard
-file <- "C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Projects\\Project1 - Chess Rankings\\chessRankings.txt"
+file <-("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project1%20-%20Chess%20Rankings/chessRankings.txt")
+
+
 data<-readLines(file)
 garbage<-seq(1,196, by = 3)
 data<-data[-(garbage)]
 data<-data.frame(data)
 
+data
 dataTibble <- tibble(1:130,data[,1])
 
 
@@ -122,8 +125,6 @@ lookupResult
 
 
 ```{r lookup table Prep}
-
-result
 #Attempts at getting this to be dynamic. The process is as follows, I need to merge my tables to add in the appropriate opponent rating for each round for each player. Afterwards, I need to rename that column before I can perform another lookup for the next round.Recall that our current table has the following for columns: playerState,preRating,playerID,playerName,Total,r1,r2,..
 #When I perform the merge for the values in r1.. I add a column called oppRating which needs to be dynamically named so that there aren't conflicts when this process repeats and names for multiple rounds.
 #Attempts: 
@@ -160,7 +161,6 @@ newResult <- newResult %>% rename(c("totalPoints"="Total"))
 
 #Drop the added merged cols
 newResult <- newResult[,-(1:(numRounds))]
-as.numeric(newResult[,6:(5+numRounds)])
 ```
 
 ```{r Cutting Out Excess}
@@ -185,7 +185,6 @@ avgOpp
 finalCSV<-avgOpp[,c('playerName','playerState','totalPoints','preRating','avgOpp')]
 
 write_csv(finalCSV,"C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Projects\\Project1 - Chess Rankings\\finalCSV.csv")
-
 
 ```
 
