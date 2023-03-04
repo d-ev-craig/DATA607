@@ -1,0 +1,33 @@
+---
+title: "Proj2 Untidy Data"
+output: html_document
+date: "2023-03-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+Introduction:
+
+Sources:
+ - African American Therapits in LA: https://www.psychologytoday.com/us/therapists/ca/los-angeles?category=african-american
+Classmate: Kory Martin
+ 
+ - Train Casualties by State
+ https://safetydata.fra.dot.gov/officeofsafety/publicsite/summary.aspx
+Classmate: Joe Garcia
+ 
+ - NBA Rankings
+https://nbarankings.theringer.com/
+Classmate: Jacob Silver
+
+
+Backup: Coco Donovan
+
+
+```{r}
+nbaRankings <- read_csv()
+```
+
+
