@@ -1,0 +1,28 @@
+---
+title: "Proj2 Untidy Data Therapists"
+output: html_document
+date: "2023-03-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Introduction:
+
+
+Sources:
+ - African American Therapists in LA: https://www.psychologytoday.com/us/therapists/ca/los-angeles?category=african-american
+Classmate: Kory Martin
+ 
+
+Backup: Coco Donovan
+
+
+```{r}
+
+therapists <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/therapists.csv")
+
+
+therapists
+```
+

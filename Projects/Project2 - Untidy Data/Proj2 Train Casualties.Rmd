@@ -1,0 +1,28 @@
+---
+title: "Proj2 Untidy Data Train Casualties"
+output: html_document
+date: "2023-03-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Introduction:
+
+
+Sources:
+
+ - Train Casualties by State
+ https://safetydata.fra.dot.gov/officeofsafety/publicsite/summary.aspx
+Classmate: Joe Garcia
+
+
+Backup: Coco Donovan
+
+
+```{r}
+trainCasualties <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/Train%20Casualties%20by%20State.csv")
+
+trainCasualties
+```
+

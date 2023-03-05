@@ -1,6 +1,8 @@
 ---
 title: "Proj2 Untidy Data"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 date: "2023-03-04"
 ---
 
@@ -8,34 +10,25 @@ date: "2023-03-04"
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
-Introduction:
-
-Sources:
- - African American Therapists in LA: https://www.psychologytoday.com/us/therapists/ca/los-angeles?category=african-american
-Classmate: Kory Martin
- 
- - Train Casualties by State
- https://safetydata.fra.dot.gov/officeofsafety/publicsite/summary.aspx
-Classmate: Joe Garcia
- 
- - NBA Rankings
-https://nbarankings.theringer.com/
-Classmate: Jacob Silver
-
-
-Backup: Coco Donovan
+Introduction:  
+  
+For our week 5 discussion, we were to come forward with datasets exemplifying "untidy" data. Project 2 requires us to take 3 of the peer posted examples from Week 5, tidy the data, and then perform the analysis requested.  
+  
+This portion will be focusing on NBA Rankings posted by Jacob.  
+  
+  
+ - NBA Rankings  
+https://nbarankings.theringer.com/  
+Classmate: Jacob Silver  
+  
+  
 
 
 ```{r Import Raw CSVs}
 nbaRankings <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/Ringer%20Top%20100%20NBA%20Players%20UNTIDY%20DATA%20-%20Sheet1.csv")
 
-therapists <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/therapists.csv")
-
-trainCasualties <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/Train%20Casualties%20by%20State.csv")
-
 nbaRankings
-therapists
-trainCasualties
+
 ```
 
 
@@ -184,6 +177,18 @@ I'm not sure which teams are the best but what I can do is show the number of ti
 top100Members <- playerTeam %>% arrange(team) %>% count(team) %>% arrange(desc(n))
 top100Members
 ```
-So from the graph below we can see BOS, TOR, MIN, LAC, and GSW contain the most players in the top 100. 
+So from the chart above we can see BOS, TOR, MIN, LAC, and GSW contain the most players in the top 100. If you go to https://www.teamrankings.com/nba/ and check their ratings we see the following:
+  
+Boston      : Rank 1  : 7 members  
+Golden State: Rank 10 : 5 members  
+LA Clippers : Rank 17 : 5 members  
+Toronto     : Rank 14 : 5 members  
+Minnesota   : Rank 18 : 5 members
+  
+Some others:  
+  
+Memphis     : Rank 5  : 4 members
+Portland    : Rank 23 : 3 members
+Houston     : Rank 29 : 1 member
 
 
