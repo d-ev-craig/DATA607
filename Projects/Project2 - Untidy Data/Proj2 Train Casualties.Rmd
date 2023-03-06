@@ -6,23 +6,130 @@ date: "2023-03-05"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 Introduction:
 
+For our week 5 discussion, we were to come forward with datasets exemplifying "untidy" data. Project 2 requires us to take 3 of the peer posted examples from Week 5, tidy the data, and then perform the analysis requested.  
+  
+This portion will be focusing on Joe's Train Casualties by State post.  
 
-Sources:
+Sources:  
 
  - Train Casualties by State
  https://safetydata.fra.dot.gov/officeofsafety/publicsite/summary.aspx
 Classmate: Joe Garcia
 
+Packages Used:  
+- tidyverse
 
-Backup: Coco Donovan
 
-
+Let's get a look a the data.
 ```{r}
 trainCasualties <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/Train%20Casualties%20by%20State.csv")
 
 trainCasualties
+trainCasualties <- trainCasualties[-54,] #Dropping the last column that sums up for totals
+```
+  
+  
+There are many gaps, but it looks like our goal will be to establish the following variables for each observation:  
+- Region(State)
+- Outcome(Fatal/Nonfatal)
+- Year  
+
+```{r}
+#Splitting the two categories of data up to divide and conquer
+
+fatal <- trainCasualties[,1:5]
+fatal
+
+nonfatal <- trainCasualties[,c(1,6:9)]
+nonfatal
+```
+```{r}
+fatal<-fatal[-(1:2),]
+nonfatal<-nonfatal[-(1:2),]
+
+#Pulling just the row of years so we can turn it into a vector. We want to use this vector to rename the columns to those years, so we can perform pivot_longer on them.
+columns<-as.numeric(fatal[1,])
+columns<-columns[-1]
+
+colnames(fatal)[2:5] <- columns #Setting column names equal to the years
+fatal <- fatal[-1,] #drop unnecessary row
+
+#pivot longer
+fatal <- fatal %>% 
+  pivot_longer(c('2019','2020','2021','2022'), names_to='year',values_to = 'count')%>% mutate(outcome = 'fatal')
+
+fatal
+
+```
+```{r}
+
+#Pulling just the row of years so we can turn it into a vector. We want to use this vector to rename the columns to those years, so we can perform pivot_longer on them.
+columns<-as.numeric(nonfatal[1,])
+columns<-columns[-1]
+
+colnames(nonfatal)[2:5] <- columns #Setting column names equal to the years
+nonfatal <- nonfatal[-1,] #drop unnecessary row
+nonfatal[32,2] <- '1339' #one of the counts was '1,339' and the comma forced a chr column type
+nonfatal$`2019` <- as.numeric(nonfatal$`2019`)
+
+#pivot longer
+nonfatal <- nonfatal %>% 
+  pivot_longer(c('2019','2020','2021','2022'), names_to='year',values_to = 'count')%>%    mutate(outcome = 'nonfatal')
+
+```
+```{r Combine and Clean}
+casualties <- rbind(fatal,nonfatal) #Comgine our rows
+colnames(casualties)[1] <- 'state'  #Name our first column to state
+casualties <- arrange(casualties,state) #order by state
+casualties$count <- as.numeric(casualties$count)
+
+casualties$count[is.na(casualties$count)]<- 0 #removing NAs with 0
+
+casualties
+```
+
+Although Joe did not mention any analysis in his post, I pulled a suggestion from Genesis' reply.  
+**Identifying trends in the data over time, such as whether the number of deaths and injuries has been increasing or decreasing in certain states or overall**
+
+Since our dataset wasn't melted down to individual observations, I decided to just sum up the values and compare across years. Most of the below work is just filtering and renaming column names. We can see by checking the graph and the proportion value for each year that although the total number of incidents have decreased over the years, the proportion of fatalities have increased each time.
+```{r Analysis}
+
+
+fatalities <- casualties %>% group_by(year) %>% filter(outcome == 'fatal') 
+survivors <- casualties %>% group_by(year) %>% filter(outcome == 'nonfatal')
+
+
+fatalitiesSum <- aggregate(fatalities$count,list(fatalities$year),FUN=sum)
+surviveSum <- aggregate(survivors$count,list(survivors$year),FUN=sum)
+
+colnames(fatalitiesSum)[1] <- 'year'
+colnames(fatalitiesSum)[2] <- 'fatality'
+colnames(surviveSum)[1] <- 'year'
+colnames(surviveSum)[2] <- 'survive'
+
+surviveSum <- surviveSum[,-1]
+
+
+summed<- data.frame(fatalitiesSum,surviveSum)
+colnames(summed)[1] <- 'year'
+colnames(summed)[2] <- 'fatalities'
+colnames(summed)[3] <- 'survived'
+
+
+summed <- summed %>% mutate(totalIncidents = fatalities+survived)
+summed <- summed %>% mutate(propFatalities = fatalities/totalIncidents)
+summed
+
+g <- ggplot(data = summed, aes(x=year,y=totalIncidents,fill=year))
+g+geom_bar(stat='identity')
+
+g2 <- ggplot(data = summed, aes(x=year,y=propFatalities,fill=year))
+g2+geom_bar(stat='identity')
+
+
 ```
 

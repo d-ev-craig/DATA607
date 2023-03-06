@@ -21,6 +21,8 @@ This portion will be focusing on NBA Rankings posted by Jacob.
 https://nbarankings.theringer.com/  
 Classmate: Jacob Silver  
   
+Packages Used:
+- tidyverse
   
 
 

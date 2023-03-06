@@ -6,23 +6,151 @@ date: "2023-03-05"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
 ```
-Introduction:
+## Introduction:  
+#### Daniel Craig
+  
+For our week 5 discussion, we were to come forward with datasets exemplifying "untidy" data. Project 2 requires us to take 3 of the peer posted examples from Week 5, tidy the data, and then perform the analysis requested.  
+  
+This portion will be focusing on Kory's African American therapists in LA and his provided untidy example.
 
 
 Sources:
  - African American Therapists in LA: https://www.psychologytoday.com/us/therapists/ca/los-angeles?category=african-american
-Classmate: Kory Martin
+Classmate: Kory Martin & his post
  
 
-Backup: Coco Donovan
-
-
+Let's take a look at the data.
 ```{r}
 
 therapists <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/therapists.csv")
 
+head(therapists)
+```
+  
+The variables that we need to create after taking a look seem to be the following:
+- Name  
+- Focus
+- Credentials  
+- Description  
+- Phone Number
+- Location
+- Mode  
+- Accepting Clients  
+  
+We will expand each of the columns one by one to get our values. Grabbing names from the first column will be first.
 
-therapists
+```{r}
+name <- therapists %>% filter(!is.na(X1))
+colnames(name)[1] <- 'name'
+name
+name <- name[,1]
+```
+In the second column, we are looking to pull out the following variables
+- Specialty
+- Description  
+- Phone Number  
+  
+We will approach this by creating sequence vectors that identify the values in the column we are interested in. We then take all those values, turn them into a column, and combine those columns to create our new dataframe. I am choosing this method since pivot_wider is performed within a cell and each variable is at a fixed sequence in the column.
+
+```{r Specialty,Descr}
+#coalesce method -not used
+#nameExpanded <- name %>% slice(rep(1:n(),each = 4))
+#nameExpanded
+
+#therapists2 <- data.frame(nameExpanded,therapists[,-1])
+#therapists2
+
+#df %>%
+#mutate(A = coalesce(A,B))
+
+#Extract values by sequences
+specialSeq <- seq(from=1,to=3200, by = 4)
+specialty <- therapists$X2[specialSeq]
+therapists2 <- cbind(name,specialty)
+
+
+#Desc Sequence
+descSeq <- seq(from=2,to=3200, by = 4)
+desc <- therapists$X2[descSeq]
+therapists2 <- data.frame(therapists2,desc)
+
+
+#phone number Sequence
+phoneSeq <- seq(from=3,to=3200, by = 4)
+phone <- therapists$X2[phoneSeq]
+therapists2 <- data.frame(therapists2,phone)
+
+#The 4th cell in the sequence of column 2 are all NAs
+#scraps Sequence
+#scrapSeq <- seq(from=4,to=3200, by = 4)
+#scrap <- therapists$X2[scrapSeq]
+#therapists2 <- data.frame(therapists2,scrap)
+head(therapists2)
 ```
 
+In the third column we want to pull the following variables:  
+- Location  
+- Online
+- Client Acceptance
+
+```{r Location, Online, CLient Acceptance}
+#Location Seq
+locSeq <- seq(from=1,to=3200, by = 4)
+loc <- therapists$X3[locSeq]
+therapists2 <- data.frame(therapists2,loc)
+
+#online Seq
+onlineSeq <- seq(from=2,to=3200, by = 4)
+online <- therapists$X3[onlineSeq]
+therapists2 <- data.frame(therapists2,online)
+
+#Client Seq
+clientSeq <- seq(from=3,to=3200, by = 4)
+client <- therapists$X3[clientSeq]
+therapists2 <- data.frame(therapists2,client)
+
+# 4th value in column is all NA
+# scrapSeq <- seq(from=4,to=3200, by = 4)
+# scrap <- therapists$X3[scrapSeq]
+# therapists2 <- data.frame(therapists2,scrap)
+# therapists2
+
+```
+  
+  
+There are a few columns that contain NA's that I'd prefer to replace with text so that it could easily be readable to an end user.
+```{r Normalizing Data & Cleaning Text}
+therapists2$specialty[is.na(therapists2$specialty)]<- 'None Listed'
+therapists2$phone[is.na(therapists2$phone)]<- 'None Listed'
+therapists2$online[is.na(therapists2$online)]<- 'No' # check this column
+therapists2$client[is.na(therapists2$client)]<- 'Accepting'
+
+therapists2$online <- str_replace(therapists2$online, '& ','')
+```
+
+  
+  
+We will also expand our location column into a state and zip code column.
+```{r Pivoting Out City, State, Zip}
+
+therapists2 <- therapists2 %>% separate_wider_delim(loc, delim = ',', names = c('city','var'))
+
+therapists2$var <- str_replace(therapists2$var, '\\D{2}','')
+
+therapists2$var <- trimws(therapists2$var)
+
+therapists2 <- therapists2 %>% rename(c('zip' = 'var'))
+
+state <- rep('CA',800)
+
+therapists2 <- cbind(therapists2,state)
+
+head(therapists2)
+
+```
+
+  
+From here its a pretty tidy data set. I did not split name since some of the 'names' are company names and would be best left all as one entity for it to be easily recognizable. I also left unicode inside the descr column since it may be best to leave those if importing the data elsewhere to another platform.
