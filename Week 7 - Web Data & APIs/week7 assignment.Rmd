@@ -19,7 +19,8 @@ Each file will include the authors, publisher, publishing date, and title of a d
 
 ```{r}
 
-html <- read_html("C:\\Users\\DCraig\\Documents\\repos\\DATA607\\Week 7 - Web Data & APIs\\html.html")
+html <- read_html("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/html.html")
+
 table <- html %>% html_element(".mytable") %>% html_table()
 
 
