@@ -1,0 +1,17 @@
+---
+title: "Week 7 - Data File Types"
+author: "Daniel Craig"
+date: "2023-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction  
+  
+This week is focused on data file types that are commonly passed or retrieved when web scraping or dealing with APIs. This example will have an html, json, and xml file that I've hand created to get a better idea of each type of structure.  
+  
+Each file will include the authors, publisher, publishing date, and title of a different book related to data science.  
+

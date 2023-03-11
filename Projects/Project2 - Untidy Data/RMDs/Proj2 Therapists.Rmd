@@ -1,35 +1,46 @@
 ---
 title: "Proj2 Untidy Data Therapists"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+  
 date: "2023-03-05"
+author: "Daniel Craig"
+
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(knitr)
+library(plyr)
+library(dplyr)
 ```
 ## Introduction:  
-#### Daniel Craig
+  
   
 For our week 5 discussion, we were to come forward with datasets exemplifying "untidy" data. Project 2 requires us to take 3 of the peer posted examples from Week 5, tidy the data, and then perform the analysis requested.  
   
 This portion will be focusing on Kory's African American therapists in LA and his provided untidy example.
-
-
+  
+  
 Sources:
  - African American Therapists in LA: https://www.psychologytoday.com/us/therapists/ca/los-angeles?category=african-american
 Classmate: Kory Martin & his post
- 
-
-Let's take a look at the data.
+  
+  
+Let's take a look at the data.  
 ```{r}
 
 therapists <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project2%20-%20Untidy%20Data/therapists.csv")
 
 head(therapists)
+
+therapists
 ```
-  
+
+### Variables of Interest
 The variables that we need to create after taking a look seem to be the following:
 - Name  
 - Focus
@@ -48,6 +59,8 @@ colnames(name)[1] <- 'name'
 name
 name <- name[,1]
 ```
+### Expanding Second Column  
+  
 In the second column, we are looking to pull out the following variables
 - Specialty
 - Description  
@@ -90,7 +103,9 @@ therapists2 <- data.frame(therapists2,phone)
 #therapists2 <- data.frame(therapists2,scrap)
 head(therapists2)
 ```
-
+  
+### Expanding Third Column  
+  
 In the third column we want to pull the following variables:  
 - Location  
 - Online
@@ -120,6 +135,8 @@ therapists2 <- data.frame(therapists2,client)
 
 ```
   
+#### NA Handling  
+  
   
 There are a few columns that contain NA's that I'd prefer to replace with text so that it could easily be readable to an end user.
 ```{r Normalizing Data & Cleaning Text}
@@ -132,17 +149,21 @@ therapists2$online <- str_replace(therapists2$online, '& ','')
 ```
 
   
+#### Expanding Location Further  
+  
   
 We will also expand our location column into a state and zip code column.
 ```{r Pivoting Out City, State, Zip}
 
 therapists2 <- therapists2 %>% separate_wider_delim(loc, delim = ',', names = c('city','var'))
 
-therapists2$var <- str_replace(therapists2$var, '\\D{2}','')
+therapists2
+
+therapists2$var <- str_replace(therapists2$var, 'CA ','')
 
 therapists2$var <- trimws(therapists2$var)
 
-therapists2 <- therapists2 %>% rename(c('zip' = 'var'))
+therapists2 <- therapists2 %>% rename(c('var' = 'zip'))
 
 state <- rep('CA',800)
 
@@ -150,7 +171,69 @@ therapists2 <- cbind(therapists2,state)
 
 head(therapists2)
 
-```
 
+#Factorizing
+therapists2$zip <- as.factor(therapists2$zip)
+therapists2$client <- as.factor(therapists2$client)
+therapists2$online <- as.factor(therapists2$online)
+
+```
   
-From here its a pretty tidy data set. I did not split name since some of the 'names' are company names and would be best left all as one entity for it to be easily recognizable. I also left unicode inside the descr column since it may be best to leave those if importing the data elsewhere to another platform.
+### Analysis  
+  
+From here its a pretty tidy data set. I did not split name since some of the 'names' are company names and would be best left all as one entity for it to be easily recognizable. I also left unicode inside the descr column since it may be best to leave those if importing the data elsewhere to another platform.  
+  
+Some analysis that was chosen to be performed:
+*Identifying the % of therapist offering online, on-ste*
+*Identifying the percent accepting new patients*
+*Break down the group based on their zip code*
+
+```{r Analysis}
+#Some totals
+therapists2 %>% dplyr::group_by(online) %>% dplyr::summarize(n())
+therapists2 %>% dplyr::group_by(client) %>% dplyr::summarize(n())
+therapists2 %>% dplyr::group_by(zip) %>% dplyr::summarize(total=n()) %>% arrange(desc(total))
+
+#Percentage of Therapists offering online
+onlineOffer <- sum(therapists2$online =='Online') #Summing number of therapists offering online
+noOnline <- sum(therapists2$online == 'No') #Summing number of therapists not offering online
+
+
+#percentageNotOnline <- noOnline/800 #800 is the total number of therapists
+percentageOnline <- (onlineOffer/800 * 100)
+print(paste0('Percentage Offering Online Service is ',percentageOnline, '%'))
+
+newPatients <- sum(therapists2$client =='Accepting') #Summing number of therapists accepting new patients
+percentagePatient <- (newPatients/800 * 100)
+print(paste0('Percentage Accepting New Patients is ',percentagePatient,'%'))
+
+#Percentage accepting both
+
+both <- sum(therapists2$online == 'Online' & therapists2$client == 'Accepting')
+percentageBoth <- (both/800 *100)
+print(paste0('Percentage accepting new patients and offering online service is ', percentageBoth,'%'))
+
+# Breaking Groups down based on Zip
+
+g <- ggplot(data=therapists2,aes(x=online, fill=online))
+g + geom_bar()
+
+
+g2 <- ggplot(data=therapists2,aes(x=client, fill=client))
+g2 + geom_bar()
+
+#Ordering the table by zip code, then by whether they offer online services, then by whether they're accepting new clients
+therapists2 <- therapists2 %>% arrange(zip,online,client)
+
+
+
+#Table to help find breakdown by each zip code
+therapists2 %>% dplyr::group_by(zip,client,online) %>% dplyr::summarize(total = n())
+
+```
+#### Summary  
+  
+So in summary, of the 800 total therapists:  
+- 698 of them offer online service (87.25%)  
+- 683 of them are accepting new patients (85.375%), 78 not accepting, 39 have a waitlist  
+- Zip code 90025 has the highest total with 80 therapists in the area  

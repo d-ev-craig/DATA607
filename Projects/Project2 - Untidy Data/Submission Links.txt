@@ -1,2 +1,8 @@
 https://rpubs.com/devcraig/DATA607proj2NBA
-https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project2%20-%20Untidy%20Data/Proj2%20NBA%20Rankings.Rmd
+https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project2%20-%20Untidy%20Data/RMDs/Proj2%20NBA%20Rankings.Rmd
+
+https://rpubs.com/devcraig/DATA607proj2Therapist
+https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project2%20-%20Untidy%20Data/RMDs/Proj2%20Therapists.Rmd
+
+https://rpubs.com/devcraig/DATA607proj2TrainCas
+https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project2%20-%20Untidy%20Data/RMDs/Proj2%20Train%20Casualties.Rmd

@@ -1,0 +1,13 @@
+{
+"Favorite Books": {
+ "Book1": [
+  {
+   "Published": "2023-01-",
+   "Name": "Deep Learning (Adaptive Computation and Machine Learning series)",
+   "Author1": "Ian Goodfellow",
+   "Author2": "Yoshua Bengio",
+   "Author3": "Aaron Courville"
+  }
+   ]
+ }
+}

@@ -1,0 +1,8 @@
+<section>
+  <h2 data-id="1">Book</h2>
+  <p>Title: R for Data Science (1e)</p>
+  <p>Published: 2017-01-31</p>
+  <p>Publisher: O'Reilly Media</p>
+  <p>Author1: Hadley Wickham</p>
+  <p>Author2: Garret Grolemund</p>
+</section>
