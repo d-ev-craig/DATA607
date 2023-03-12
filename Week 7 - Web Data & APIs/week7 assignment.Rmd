@@ -12,6 +12,7 @@ library(htmltools)
 library(jsonlite)
 library(XML)
 library(RCurl)
+library(methods)
 ```
 
 # Introduction  
@@ -41,10 +42,11 @@ print(json$`Favorite Books`$Book1)
 ```{r XML}
 xml <- getURL("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/xml.xml",ssl.verifyPeer = FALSE)
 
-
-xmlData <- xmlTreeParse(xml)
-
 xml
+
+xmlData <- xmlToDataFrame(xml)
+
+print(xmlData)
 
 
 ```

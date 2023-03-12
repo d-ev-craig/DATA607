@@ -1,13 +1,28 @@
 {
-"Favorite Books": {
- "Book1": [
-  {
-   "Published": "2023-01-",
-   "Name": "Deep Learning (Adaptive Computation and Machine Learning series)",
-   "Author1": "Ian Goodfellow",
-   "Author2": "Yoshua Bengio",
-   "Author3": "Aaron Courville"
-  }
-   ]
- }
+	"Favorite Books": {
+		"Book1": [{
+			"Published": "2016-11-18",
+			"Name": "Deep Learning (Adaptive Computation and Machine Learning series)",
+			"Author1": "Ian Goodfellow",
+			"Author2": "Yoshua Bengio",
+			"Author3": "Aaron Courville",
+			"Publisher": "O'Reilly Media"
+		}],
+		"Book2": [{
+			"Published": "2023-01-17",
+			"Name": "Python Data Science Handbook: Essential Tools for Working with Data (2e)",
+			"Author1": "Jake VanderPlas",
+			"Author2": "NA",
+			"Author3": "NA",
+			"Publisher": "O'Reilly Media"
+		}],
+		"Book3": [{
+			"Published": "2017-01-31",
+			"Name": "R for Data Science (1e)",
+			"Author1": "Hadley Wickham",
+			"Author2": "Garret Grolemund",
+			"Author3": "NA",
+			"Publisher": "O'Reilly Media"
+		}]
+	}
 }

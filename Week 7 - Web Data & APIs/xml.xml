@@ -2,7 +2,25 @@
   <book>
   	  <title>Python Data Science Handbook: Essential Tools for Working with Data (2e)</title>
 	  <author>Jake VanderPlas</author>
+        <author2>NA</author2>
+        <author3>NA</author3>
 	  <publisher>O'Reilly Media</publisher>
 	  <published>2023-01-17</published>
+  </book>
+  <book>
+        <title>R for Data Science (1e)</title>
+	  <author>Hadley Wickham</author>
+        <author2>Garret Grolemund</author2>
+        <author3>NA</author3>
+	  <publisher>O'Reilly Media</publisher>
+	  <published>2017-01-31</published>
+  </book>
+  <book>
+        <title>Deep Learning (Adaptive Computation and Machine Learning series)</title>
+	  <author>Ian Goodfellow</author>
+        <author2>Yoshua Bengio</author2>
+        <author3>Aaron Courville</author3>
+	  <publisher>O'Reilly Media</publisher>
+	  <published>2016-11-18</published>
   </book>
 </Records>
