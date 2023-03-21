@@ -1,0 +1,20 @@
+---
+title: "Indeed API Scrape"
+author: "Daniel Craig"
+date: "2023-03-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(tidyverse)
+library(xml2)
+```
+
+```{r URL}
+url <- "https://www.indeed.com/jobs?q=Data+Scientist&l=Raleigh%2C+NC&vjk=84249428f4919fa2"
+
+page <- xml2::read_html(url)
+```
+

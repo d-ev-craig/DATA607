@@ -1,0 +1,190 @@
+---
+title: "Extra Credit JSON Practice"
+author: "Daniel Craig"
+date: "2023-03-21"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_hide: false
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE,message = FALSE)
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(rmarkdown)
+```
+## Goal  
+
+Working with the two JSON files available through the API at nobelprize.org, ask and answer 4 interesting questions, e.g. “Which country “lost” the most nobel laureates (who were born there but received their Nobel prize as a citizen of a different country)?” 
+
+Using the following source to guide httr usage: https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html
+
+### API Section/ Prep Work  
+  
+  
+This was some work that I did to connect laureates to their winning year since their names were in nested dataframes. I took the route of combining all of the dataframes by row and building a year column in a loop as it iterated down the prizes column. Bind_rows from dplyr is very useful for JSON templates due to its ability to combine rows across nested dataframes if they're in the same column of a list.  
+<br>
+<br>
+```{r Prize}
+url <- "http://api.nobelprize.org/v1/prize.json"
+
+response <- VERB("GET", url, content_type("application/octet-stream"), accept("application/json"))
+
+prizeBody <- content(response, "text")
+
+prize <- fromJSON(prizeBody)
+years <- unique(prize$prizes$year)
+prizes <- prize$prizes
+
+#Prep work for loop, creating empty dataframes to be add records into via loop
+laureates <- data.frame(matrix(ncol = 5, nrow = 0))
+colnames(laureates) <- c('id','firstname','surname','motivation','share')
+newYear <- c('blank')
+
+
+for(i in years) {
+    yr = i             #set yr equal to year we are working on
+    #print(yr)
+    
+    filterP <- prizes[prizes$year == yr,] #filter our dataframe for only the years of dataframes we want
+    
+    newRows <- bind_rows(filterP$laureates) #bind the rows of those dataframes we just filtered for
+    
+    laureates <- rbind(laureates,newRows) #add them to our master df
+    
+    vec <- rep(yr,count(newRows))
+    newYear <- append(newYear,vec) #create a 2nd dataframe of the years repeated for each row in each dataframe so that it can be added to the master df
+    
+    #print("Loop done")
+}
+
+#Cleaning up loose ends
+newYear <- newYear[-1]
+laureates <- data.frame(newYear,laureates)
+colnames(laureates)[1] <- 'year'
+
+paged_table(laureates)
+
+```
+
+### Question 1  
+*What individuals/organizations have won the most Nobel Prizes? * 
+<br>
+<br>
+```{r MostWinningest}
+#Pull together first name and last name to have a one column lookup for individuals + id
+laureates <- laureates %>% unite("fullName",sep= ' ', firstname:surname,remove=FALSE)
+
+#View the winners by who has won the most prizes
+top10 <- laureates %>% count(id) %>% arrange(desc(n))
+
+#Ensure these are unique records with no duplicates for a second name or the like
+top10Names <- top10 %>% left_join(laureates %>% select(id,fullName)%>%unique())
+
+paged_table(top10Names)
+```
+From here, we can see that the groups/individuals that have won the most Nobel Prizes are the International Committee of the Red Cross, Linus Pauling, Frederick Sanger, Office of the UN, Marie Curie, and John Bardeen. Here are some wiki links for the first few individuals.  
+<br>
+<br>
+**Linus Pauling**(https://en.wikipedia.org/wiki/Linus_Pauling#Honors_and_awards) - Considered one of the greatest scientists of all time, was a founder of quantum chemistry and molecular biology. He contributed to the theory of chemical bonds and molecular structures with the concept of orbital hybridisation. He inspired many people that eventually went to work on DNA and other structures.  
+<br>
+**Frederick Sanger** (https://en.wikipedia.org/wiki/Frederick_Sanger) - Another biochemist awarded for his work on amino acid sequencing of insulin which served as a foundation for the "central dogma of molecular biology." He also developed and improved the first DNA sequencing technique and is still in use.  
+<br>
+**Marie Curie** (https://en.wikipedia.org/wiki/Marie_Curie) - A polish born and French naturalized physicist and chemist who focused on research in radioactivity. She coined the term "radioactivity" and found the elements polonium and radium using techniques she invented for isolationg radioactive isotopes.  
+<br>
+**John Bardeen** (https://en.wikipedia.org/wiki/John_Bardeen) - An American physicist and engineer, his invention of the transistor and the fundamental theory of conventional superconductivity (aka BCS Theory) is the only person to date to be awarded two Novel Prizes in Phsyics.  
+<br>
+<br>
+
+### Question 2/3
+*Which countries have had the most individuals leave or die in a country outside of their birth country?*
+*Which countries have inherited the most individuals who died outside their original country of birth?  *
+<br>
+<br>
+To answer these questions, I felt it faster to go through the laureate.json file from the API for specific laureate data, such as their citizenship.
+<br>
+<br>
+```{r Laureate}
+
+url <- "http://api.nobelprize.org/v1/laureate.json"
+
+queryString <- list(gender = "All")
+
+response <- VERB("GET", url, query = queryString, content_type("application/octet-stream"), accept("application/json"))
+
+bodyLaureate <- content(response, "text")
+
+laureate <- fromJSON(bodyLaureate)
+
+
+laureatesDetails <- laureate$laureates
+
+#find all instances where the born and died country codes don't match
+deaths <- laureatesDetails[laureatesDetails$bornCountryCode != laureatesDetails$diedCountryCode,] %>% select(firstname,surname,born,died,bornCountry,bornCountryCode,diedCountry,diedCountryCode)
+
+#Create a country code table to check acronym to name conversions
+countryCodes <- deaths %>% select(bornCountry,bornCountryCode)
+countryCodes <- unique(countryCodes)
+colnames(countryCodes)[2] <- 'countryCode'
+
+#Find which countries had the most people "move"/"die" in that weren't their original country
+deaths %>% count(diedCountryCode) %>% arrange(desc(n)) %>% left_join(countryCodes, join_by(diedCountryCode == countryCode)) %>% paged_table()
+
+
+#Find which countries had the most people born/left from their original country
+deaths %>% count(bornCountryCode) %>% arrange(desc(n)) %>% left_join(countryCodes, join_by(bornCountryCode == countryCode)) %>% paged_table()
+```
+We can see that the US "inherited" the majority of people that died outside of their country of origin. We also see that The German/Russian/Austria-Hungary geographical area had the most people "leave." Although this is most likely due to the re-organization of country and political boundaries.  
+<br>
+<br>
+
+### Question 4
+*Which countries have birthed the most Nobel Prize winners? For this question, I started on the country.json file since it seems most logical to me to start here for information based on country.*
+<br>
+<br>
+```{r Country}
+
+url <- "http://api.nobelprize.org/v1/country.json"
+
+response <- VERB("GET", url, content_type("application/octet-stream"), accept("application/json"))
+
+bodyCountry <- content(response, "text")
+country <- fromJSON(bodyLaureate) #convert JSON
+
+#Birth Country Count
+country$laureates %>% count(bornCountry)%>% arrange(desc(n))%>% paged_table()
+```
+<br>
+We can see the USA at the top followed by the UK, Germany, France, Sweden and more.  
+<br>
+<br>
+<br>
+
+### Question 5 
+*What is the ratio of men to women as Nobel Prize winners? *
+<br>
+<br>
+```{r Gender Ratios}
+country$laureates %>% count(gender)
+maleRatio <- 894/981
+femaleRatio <- 60/981
+orgRatio <- 27/954
+
+maleFemale <- maleRatio/femaleRatio
+
+print(paste0("The male ratio is ",maleRatio))
+print(paste0("The femalre ratio is ",femaleRatio))
+print(paste0("The male to female ratio is ",maleFemale))
+print(paste0("The org to non-org ratio is ",orgRatio))
+
+```
+15 men to 1 woman ratio. Not exactly surprising, but thought it would be cool to know the exact number. Until doing this assignment, I was unaware that laureates could be organizations, so it is interesting to see that about 2% of Nobel Prize Winners are for organizations!
+<br>
+<br>
+<br>

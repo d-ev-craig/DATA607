@@ -2,7 +2,10 @@
 title: "Week 7 - Data File Types"
 author: "Daniel Craig"
 date: "2023-03-11"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -20,30 +23,51 @@ library(methods)
 This week is focused on data file types that are commonly passed or retrieved when web scraping or dealing with APIs. This example will have an html, json, and xml file that I've hand created to get a better idea of each type of structure.  
   
 Each file will include the authors, publisher, publishing date, and title of a different book related to data science.  
+  
+URLs for the different files:  
+-
+- JSON: https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/json.json
+- XML: https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/xml.xml
+- HTML: https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/html2.html
+
+  
+  
+  
+### HTML  
+The biggest takeaways in this area are the use of html_element and html_table. You can read the html directly, but I thought it would be better practice to declare the table element as '.mytable' so it could be used by html_element for reference. This is quite handy if I had a large HTML file and only wanted one portion of it. If I read the html directly, it would take some string matching and more intense clean up.  
 
 ```{r}
 
 html <- read_html("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/html2.html")
 
-html
-
 table <- html %>% html_element('.mytable') %>% html_table()
 
 table
 ```
+  
+  
+### JSON  
+I'm most familiar with JSON and although I really like that when the package interprets the json object it can easily be accessed with normal R nomenclature(ie. using $ to access an item inside a DF or List), I remember having quite the painful experience having to call a massive json object, and then chop up pieces of all the different lists provided to group the information I needed. Maybe this was due to poor relational structures in the database I was pulling from. Notice here that JSON returns a list and I had to combine several data frames to create the single frame I was looking for.
 ```{r JSON}
-
+#Note here that JSON comes in a bit different from the others as a list.
 json <- jsonlite::fromJSON("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/json.json")
 
 
-print(json$`Favorite Books`$Book1)
+jsonFrame <- rbind(json$`Favorite Books`$Book1,json$`Favorite Books`$Book2,json$`Favorite Books`$Book3)
+jsonFrame
 ```
-
+  
+  
+### XML  
+  
+  I prefer XML the most. It makes the most sense to me when handwriting it. It's very simple and straightforward. My prior experience comes from my old job, I had to create xml formats for applications to fill in information when passing flat files between software. To ensure the xmlToDataFrame command I was using worked, I needed to load the "methods" library after the xml library. Also note that I had to use getURL() with the URL to get the info rather than something purpose built for XML files. I printed the object so that one could see what it looks like before using xmlToDataFrame.
 ```{r XML}
-xml <- getURL("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/xml.xml",ssl.verifyPeer = FALSE)
 
+
+xml <- getURL("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Week%207%20-%20Web%20Data%20%26%20APIs/xml.xml")
 xml
 
+#Make sure to load the "methods" library before running this line or you will not keep the xml headers as column names
 xmlData <- xmlToDataFrame(xml)
 
 print(xmlData)
