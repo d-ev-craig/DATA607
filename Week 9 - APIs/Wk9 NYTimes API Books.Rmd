@@ -1,0 +1,47 @@
+---
+title: "Week9 API"
+author: "Daniel Craig"
+date: "2023-03-23"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_hide: false
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE,message = FALSE)
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(rmarkdown)
+```
+
+
+## NY Times Books API  
+<br>
+NY Times offers quite a few different APIs to be worked with. The one I will be using is the Books API that focuses on the specific books and their rankings within the best seller lists for each category. As I explore the different endpoints, I hope to organize a comprehensive dataframe that combines all of the categories, ie. hardcover fiction, so that we can have a singular dataframe to view most information. I may leave out certain things like isbn10 or other information that I will clarify why I drop it when it happens.  
+<br>
+<br>
+To start, let's see all the different lists that are available to us. There are 59 different list titles that we can parse for their own list of books to be consolidated into one massive dataframe. Let's get started with a loop pulling each and setting it as a variable. After that I will drop unnecessary columns and start combining them.
+
+```{r}
+l <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/names.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
+
+l$results$list_name
+```
+
+
+
+```{r}
+r <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
+
+
+r$results$books
+
+r$results$bestsellers_date
+```
+
