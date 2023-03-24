@@ -18,6 +18,7 @@ library(dplyr)
 library(tidyr)
 library(knitr)
 library(rmarkdown)
+library(stringr)
 ```
 
 
@@ -26,22 +27,52 @@ library(rmarkdown)
 NY Times offers quite a few different APIs to be worked with. The one I will be using is the Books API that focuses on the specific books and their rankings within the best seller lists for each category. As I explore the different endpoints, I hope to organize a comprehensive dataframe that combines all of the categories, ie. hardcover fiction, so that we can have a singular dataframe to view most information. I may leave out certain things like isbn10 or other information that I will clarify why I drop it when it happens.  
 <br>
 <br>
-To start, let's see all the different lists that are available to us. There are 59 different list titles that we can parse for their own list of books to be consolidated into one massive dataframe. Let's get started with a loop pulling each and setting it as a variable. After that I will drop unnecessary columns and start combining them.
+To start, let's see all the different lists that are available to us. There are 59 different list titles that we can parse for their own list of books to be consolidated into one massive dataframe. Let's get started with a loop pulling each and setting it as a variable. After that I will drop unnecessary columns and start combining them.  
+<br>
+To create our loop we are going to need to pass a series of arguments to our preferred function fromJSON() letting it know which URLs to query. Luckily NY Times has a call to get a list of all the different options that can be called elsewhere. First, we collect our calls.
 
 ```{r}
 l <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/names.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
 
-l$results$list_name
+genres <- l$results$list_name
+genres <- str_replace_all(genres," ","-")
+genres[17] <- "Combined-Print-Nonfiction"
+
+paged_table(genres)
+
 ```
 
-
+I saved the list names which are basically genres/categories and changed the 17th one since I was originally getting a URL-not-found error during troubleshooting and took a wild stab that maybe nonfiction needed to spelled as one word. I was right!
+<br>
+<br>
+From here, we create our genre calls with the url text and can view our finished values.
 
 ```{r}
-r <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
+genreCalls <- print(paste0("https://api.nytimes.com/svc/books/v3/lists/current/",genres,".json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")) #Create the text for the fromJSON function
 
 
-r$results$books
+#t <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/best-sellers/history.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
+#t$results
 
-r$results$bestsellers_date
+paged_table(genreCalls)
+
+```
+
+The loop below has a 10 second sleep timer in there. From troubleshooting, I found there tended to be failure if I did anything of certain volumes and figured NY Times might have some kind of limit. In the loop, we create a list of the results dataframes from each genre/category
+```{r}
+
+list <- list() #Create empty list that we can dump all of our dataframes into
+
+for (i in 1:length(genreCalls)) {    # iterate for the length of genreCalls
+
+  test <- fromJSON(genreCalls[i])    #save the info
+
+  assign(paste0("results",genres[i]),test$results) #assign takes in a variable name, which you can create dynamically, and values to be assigned to that name, this allows us to create variables dynamically
+
+  list <- append(list,paste0("results",genres[i])) #add each new dataframe to a list for ease of reference later
+  Sys.sleep(10)
+}
+
+
 ```
 
