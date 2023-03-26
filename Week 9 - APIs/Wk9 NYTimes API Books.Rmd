@@ -22,57 +22,87 @@ library(stringr)
 ```
 
 
-## NY Times Books API  
+# NY Times Books API  
 <br>
-NY Times offers quite a few different APIs to be worked with. The one I will be using is the Books API that focuses on the specific books and their rankings within the best seller lists for each category. As I explore the different endpoints, I hope to organize a comprehensive dataframe that combines all of the categories, ie. hardcover fiction, so that we can have a singular dataframe to view most information. I may leave out certain things like isbn10 or other information that I will clarify why I drop it when it happens.  
+NY Times offers quite a few different APIs to be worked with. The one I will be using is the Books API that focuses on the specific books and their rankings within the best seller lists for each category. As I explore the different endpoints, I hope to organize a comprehensive dataframe that combines all of the categories, ie. hardcover fiction, so that we can have a singular dataframe to view most information. I may leave out certain things such as book image width and length or other uninteresting info. In effect, I am converting their JSON files back into a table that could easily be processed by some SQL software or similar.  
 <br>
 <br>
-To start, let's see all the different lists that are available to us. There are 59 different list titles that we can parse for their own list of books to be consolidated into one massive dataframe. Let's get started with a loop pulling each and setting it as a variable. After that I will drop unnecessary columns and start combining them.  
+To start, let's see all the different lists that are available to us.The below code chunk reveals there are 59 different list titles that we can parse for their own list of books to be consolidated into one massive dataframe. Let's get started with a loop pulling each and setting it as a variable. After that I will drop unnecessary columns and start combining them.  
 <br>
 To create our loop we are going to need to pass a series of arguments to our preferred function fromJSON() letting it know which URLs to query. Luckily NY Times has a call to get a list of all the different options that can be called elsewhere. First, we collect our calls.
 
+## Finding All API Calls to Loop
 ```{r}
 l <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/names.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
 
 genres <- l$results$list_name
 genres <- str_replace_all(genres," ","-")
 genres[17] <- "Combined-Print-Nonfiction"
-
-paged_table(genres)
+#genres <- data.frame(genres)
+head(genres,10) #I chose print instead of paged_tables, because it requires genres to be a data frame and if I change it to that our genreCalls line will create incorrect output
 
 ```
-
-I saved the list names which are basically genres/categories and changed the 17th one since I was originally getting a URL-not-found error during troubleshooting and took a wild stab that maybe nonfiction needed to spelled as one word. I was right!
+<br>
+There are 59 categories in total. Above I only showed 10 for readability. I saved the list names and changed the 17th one since I was originally getting a URL-not-found error during troubleshooting and took a wild stab that maybe nonfiction needed to spelled as one word. I was right!
 <br>
 <br>
 From here, we create our genre calls with the url text and can view our finished values.
 
 ```{r}
-genreCalls <- print(paste0("https://api.nytimes.com/svc/books/v3/lists/current/",genres,".json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")) #Create the text for the fromJSON function
-
+genreCalls <- paste0("https://api.nytimes.com/svc/books/v3/lists/current/",genres,".json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy") #Create the text for the fromJSON function
 
 #t <- fromJSON("https://api.nytimes.com/svc/books/v3/lists/best-sellers/history.json?api-key=US3wVrAhtL0siGxqkfY2ufhKr5gweMYy")
 #t$results
-
-paged_table(genreCalls)
-
+head(genreCalls, 5)
 ```
-
+## Looping API Calls  
 The loop below has a 10 second sleep timer in there. From troubleshooting, I found there tended to be failure if I did anything of certain volumes and figured NY Times might have some kind of limit. In the loop, we create a list of the results dataframes from each genre/category
+<br>
 ```{r}
+# I would like to re-do this loop with lapply() since it should be faster ignoring the 10 second wait timer
 
 list <- list() #Create empty list that we can dump all of our dataframes into
 
 for (i in 1:length(genreCalls)) {    # iterate for the length of genreCalls
 
-  test <- fromJSON(genreCalls[i])    #save the info
+  test <- fromJSON(genreCalls[i])    #get the info
+  
+  books <- data.frame(test$results$books) #save the dataframe we are interested in to a variable that will be recognized as a df
+  
+  books <- books %>% select(rank, rank_last_week,weeks_on_list,primary_isbn10,primary_isbn13,publisher,title, author, contributor,book_image,amazon_product_url,age_group) %>% mutate(category = genres[i]) 
+# select only columns of interest and add a column referencing what category the rows are from
+  
+  assign(paste0("results",genres[i]),books) 
+#assign takes in a variable name, which you can create dynamically, and values to be assigned to that name, this allows us to create variables dynamically
 
-  assign(paste0("results",genres[i]),test$results) #assign takes in a variable name, which you can create dynamically, and values to be assigned to that name, this allows us to create variables dynamically
-
-  list <- append(list,paste0("results",genres[i])) #add each new dataframe to a list for ease of reference later
-  Sys.sleep(10)
+  Sys.sleep(10) #wait timer so NY Times does not flag me
 }
 
+```
 
+<br>
+<br>
+From here, we make out mega dataframe with all the results from each API call.
+<br>
+```{r}
+
+list <- mget(x = ls(pattern = '^results')) #retrieves every variable in the environment starting with 'results'
+list <- list[-1] #dropping the first element of the list since it is NULL from when we created it before the for loop
+
+megaDF <- bind_rows(list) #I love this function like no other
+
+paged_table(megaDF)
+
+```
+### The Full Dataframe  
+Now we can filter books by category instead of having to make the calls again. This could be useful if one wanted a clean historical report of all best sellers. If we wanted one for weekly/monthly updated lists we could repeat this process but call a different endpoint: /lists/current/category.json
+<br>
+<br>
+It's interesting to note that sometimes a book ends up as a best seller in multiple categories, ie.It Ends With Us by Colleen Hoover or The Body Keeps the Score by Bessel van der Kolk. Below is the entire table ordered by descending weeks on the top seller list to see the champions over the past years.
+
+```{r}
+unique(megaDF$category)
+
+paged_table(megaDF %>% arrange(desc(weeks_on_list)))
 ```
 

@@ -1,0 +1,11 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/1020292/2431157340884efb97b7b79500660d2a
+bundleId: https://api.rpubs.com/api/v1/document/1020292/2431157340884efb97b7b79500660d2a
+url: http://rpubs.com/devcraig/1020292/edit
+when: 1679869689.03816
+lastSyncTime: 1679869689.03817
