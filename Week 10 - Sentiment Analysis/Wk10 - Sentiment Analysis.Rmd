@@ -1,0 +1,462 @@
+---
+title: "Wk10 - Sentiment Analysis"
+author: "Daniel Craig"
+date: "2023-03-31"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_hide: false
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidytext)
+library(tidyverse)
+library(gutenbergr)
+library(ggplot2)
+library(tidyr)
+library(syuzhet)
+library(tidytext)
+library(rmarkdown)
+library(wordcloud)
+library(reshape2)
+library(janeaustenr)
+```
+
+# Sentiment Analysis
+|    As a brief summary of sentiment analysis, a condensed workflow will be to source material, stem the tokens if using only words, remove stop words, and perform lookups on lexicons to establish sentiment of the word. From there, grouping, presenting, and visualizing the data is up to the coder.  
+|    Sentiment Analysis references a corpus, which is to say source material, and a lexicon, which is a library of words with associated ratings for numeric values or binary 'positive'/'negative' values. Most of the work will be on cleaning the corpus. In this assignment, we will be comparing four lexicons; afinn, nrc, bing, and syuzhet. Another of interest would be VADER, referenced later.
+
+## Corpus Selection & Prep
+|    Using the gutenberg package, I chose to download and work on a classic that I read in highschool, 'Adventures of Huckleberry Finn' by Mark Twain.  
+  
+|    To guide my work, I am using a slighly modified version of Chapter 2 of Text Mining with R. Further citation can be found at the bottom of this page.
+<br>
+Below I will be sourcing Huckleberry Finn from the gutenbergr library.
+```{r Gutenberg}
+works <- gutenberg_works()
+works
+works %>% filter(title == 'Adventures of Huckleberry Finn')
+
+huckleberry <- gutenberg_download('76')
+```
+<br>
+From here, we want to clean our data by the tidytext principles using code sourced from Text Mining with R _(Silge, J., & Robinson, D. 2017, Sec. 2.2)_.
+```{r TidyText}
+tidyHuck <- huckleberry[-(1:384),] %>% #removing first 380 rows since its an index and interferes with chapter regex
+  mutate(
+    linenumber = row_number(), #add index of row numbers
+    chapter = cumsum(str_detect(text,  #add index of chapter
+                                regex("CHAPTER ([IVXLC]*\\.|THE LAST)", #by finding any text starting with "chapter #"
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text) #notice we use 'word' as the unit of token
+
+
+paged_table(tidyHuck)
+
+#Book Copy for use in unnest_tokens by regex
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+
+```
+<br>
+
+### Lexicon Sentiment Tests
+|    To get familiar with the package and lexicons, first we will perform a few exercises with some of the lexicons and the tidytext package. 
+<br>
+
+#### NRC
+|    A look at the most commonly used words with joy from the NRC lexicon _(Silge, J., & Robinson, D. 2017, Sec. 2.2)_. The NRC Lexicon has categories for the words such as 'joy','anger', or 'trust.' This is quite useful for capturing types of emotions.
+<br>
+
+```{r}
+paged_table(get_sentiments("nrc"))
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy") #filter nrc lexicon for words classified as joy
+
+tidyHuck %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE) #join and count all words from tidyHuck to nrc_joy to identfiy how many joy words are used in the book
+```
+<br>
+
+#### Bing
+|    The bing lexicon is a simple binary label that identifies whether a word is positive or negative. In the example below, we also divide our lines up into chunks of 80 words and compare the positive to negative counts to get an idea of the text as a whole _(Silge, J., & Robinson, D. 2017, Sec. 2.2)_
+<br>
+```{r}
+paged_table(get_sentiments("bing"))
+huckSentiment <- tidyHuck %>%
+  inner_join(get_sentiments("bing")) %>% #join words that match bing lexicon
+  count(index = linenumber %/% 80, sentiment) %>% #Removed 'book' as initial argument since we are only working with one book
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+paged_table(huckSentiment)
+```
+<br>
+```{r}
+ggplot(huckSentiment, aes(index, sentiment)) +
+  geom_col(show.legend = FALSE)
+```
+<br>
+We can see that there is quite a variance in Huckleberry Finn. I would imagine this is natural for fiction works and could be an indicator of entertaining reads.
+<br>
+<br>
+From here, let's check the four different lexicons to compare with.
+<br>
+
+### Lexicon Comparisons
+#### AFINN
+|    Here we introduce the afinn lexicon, which provides numeric values between -5 and 5 _(Silge, J., & Robinson, D. 2017, Sec. 2.3)_
+<br>
+```{r}
+afinn2 <- get_sentiments(c("afinn"))
+unique(afinn2$value)
+
+#Create tibble for AFINN values
+afinn <- tidyHuck %>% 
+  inner_join(get_sentiments("afinn")) %>% #look up sentiment
+  group_by(index = linenumber %/% 80) %>% #chunk by 80 lines
+  summarise(sentiment = sum(value)) %>% #count values by our groups
+  mutate(method = "AFINN") #label the lexicon used
+
+bing_and_nrc <- bind_rows(
+  tidyHuck %>% 
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+  tidyHuck %>% 
+    inner_join(get_sentiments("nrc") %>% 
+                 filter(sentiment %in% c("positive", 
+                                         "negative"))#only grab the positive and negative qualities in NRC and avoid anger, joy, etc.
+    ) %>%
+    mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment,
+              values_from = n,
+              values_fill = 0) %>% #pivot wider to easily subtract the positive count from the negative count
+  mutate(sentiment = positive - negative)#create overall sentiment value for the group
+paged_table(afinn)
+paged_table(bing_and_nrc)
+```
+<br>
+
+#### Syuzhet
+|    Our last lexicon requires the installation and use of a package called [syuzhet](https://www.rdocumentation.org/packages/syuzhet/versions/1.0.6). The main difference between this package and others is that ratings have more nuanced values than the other lexicons which are; –1.0, –0.8 –0.75, –0.6, –0.5, –0.4, –0.25, 0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8, 1.0.
+<br>
+The syuzhet lexicon has come under criticism, particularly by [Swaffored](https://annieswafford.wordpress.com/2015/03/02/syuzhet/) but still holds value and is extremely popular.
+<br>
+
+|    Another package of interest is [VADER](https://cran.r-project.org/web/packages/vader/index.html), which is a lexicon that performs particularly well on social media. You can use its [github](https://github.com/cjhutto/vaderSentiment) page and [paper](http://eegilbert.org/papers/icwsm14.vader.hutto.pdf) for more resources. If one of the links above is not working, try a search with the title of the paper "VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text" by C.J. Hutto and Eric Gilbert.
+
+```{r Syuzhet}
+value <- get_sentiment(tidyHuck$word,method = "syuzhet") #calling syuzhet's get_sentiment command
+
+syuzhetHuck <- cbind(tidyHuck,value) #attaching to tidyHuck to match AFINN's tibble structure
+
+
+#Below code finishes matching AFINN structure
+syuzhet <- syuzhetHuck %>% 
+  group_by(index = linenumber %/% 80) %>% #Re-iterating AFINN's 80 word division for comparison
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "syuzhet")
+
+```
+<br>
+Let's see how they all compare against each other visually _(Silge, J., & Robinson, D. 2017, Sec. 2.3)_.
+<br>
+```{r}
+bind_rows(afinn, 
+          bing_and_nrc,syuzhet) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+```
+<br>
+Overall, it looks like syuzhet would be most similar to AFINN or NRC. The syuzhet lexicon doesn't seem to be as sensitive to slightly negative words but still captures anything overly negative. 
+<br>
+
+### Most Common Positive and Negative Words
+<br>
+
+|   Using both the bing and syuzhet package, let's see the most commonly positive or negative words From this point, we can graph them and visually compare _(Silge, J., & Robinson, D. 2017, Sec. 2.4)_.
+```{r}
+bing_word_counts <- tidyHuck %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts
+```
+To match this with the syuzhet package, we will need to classify our words into positive or negative and filter out any neutrals.
+```{r}
+syuzhetHuckSentiment <- syuzhetHuck %>% mutate(sentiment =
+  if_else(value > 0,'positive', 
+    if_else(value < 0,'negative','neutral')
+  )
+) #Classify our values
+
+syuzhet_word_counts <- syuzhetHuckSentiment %>% #count
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+syuzhetHuckLookup <- syuzhetHuckSentiment %>% #create lookup to join word values for display
+  select(word,value,sentiment)
+
+syuzhetHuckLookup <- unique(syuzhetHuckLookup)#remove repeats
+
+
+syuzhetCounts <-left_join(syuzhet_word_counts[,c("word","n")],syuzhetHuckLookup, by = "word") #performing left join to show value of words with our counts to give reader idea of weight
+
+nonNeutralSyuzhetCounts<- syuzhetCounts %>%
+  filter(sentiment != 'neutral') %>% #filter out neutral words, value 0
+  mutate(method = 'syuzhet')
+
+
+paged_table(nonNeutralSyuzhetCounts)
+  
+```
+<br>
+Now that we have these counts, it is easy to compare visually _(Silge, J., & Robinson, D. 2017, Sec. 2.4)_.
+```{r}
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+```
+<br>
+
+|    Using bing, we can highlight heavily impacting words. From this perspective, one could deduce that the word "well" may be overly used as a "filler" word when speaking due to the dialect that Mark Twain wrote the book in. Combining both into a grid allows a comparison. Surprisingly, syuzhet captures the word "warn't" and has no value for the word "dark" or "miss."
+<br>
+```{r}
+bing_word_counts <- bing_word_counts %>%
+  mutate(method='bing')
+
+bind_rows(bing_word_counts,nonNeutralSyuzhetCounts) %>%
+  group_by(method,sentiment) %>%
+  slice_max(n, n = 5) %>%
+  arrange(desc(n)) %>%
+  ggplot(aes(n,word, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_grid(sentiment~method)
+```
+<br>
+
+### Custom Stop Words
+|    We can see from bing and syuzhet, that the word 'well' is identified as a positive word, but due to the dialect its more likely Twain inserted the word as a filler word. We can easily remove this through the use of custom stop words _(Silge, J., & Robinson, D. 2017, Sec. 2.4)_. With this lexicon, we could then filter with the created tibble as below.
+
+```{r}
+custom_stop_words <- bind_rows(tibble(word = c("well"),  
+                                      lexicon = c("custom")), 
+                               stop_words)
+paged_table(custom_stop_words)
+```
+
+### Word Clouds
+|    A word cloud is an effective way to view most used words and can be thought of a plot unto itself. Using a stop words list, we can highlight important most used words _(Silge, J., & Robinson, D. 2017, Sec. 2.5)_.
+```{r}
+tidyHuck %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, min.freq = 50))
+```
+<br>
+<br>
+
+|    We can also view both negative and positive words in the same plot with the use of reshape's comparison cloud and acast _(Silge, J., & Robinson, D. 2017, Sec. 2.5)_.
+<br>
+```{r}
+
+tidyHuck %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+
+### Units Larger than Single Words
+|    Handling negation is an important aspect of sentiment analysis, as without it, inaccurate values or representation may happen. We can accomodate this by using "sentences" as the token _(Silge, J., & Robinson, D. 2017, Sec. 2.6)_.
+```{r}
+huckSentences <- tibble(text = huckleberry$text) %>% 
+  unnest_tokens(sentence, text, token = "sentences")
+
+huckSentences$sentence[111]
+```
+<br>
+
+|   Another option is to chunk the text by chapters using a regex pattern inside the unnest_tokens function _(Silge, J., & Robinson, D. 2017, Sec. 2.6)_. Be very careful! This took me a minute to figure out and troubleshoot as I was getting thousands of Huckleberry Finn chapters despite my regex being correct. I made some notes inside my code on how I worked out the bugs. This required to work with the raw text and not the tidytext we formatted at the beginning.
+<br>
+```{r}
+
+#Notes on unnest_tokens(chapter,text,token = regex, pattern)
+# To have this work in a legible manner, you have to make sure that you group by book before summarising, which requires a 'book' column next to the 'text' column. Make sure you're regex is correct and remove any excess lines like indexes/prefaces
+
+
+#Prepping Huck text to format well
+huckText <- as_tibble(huckleberry$text[-(1:384)]) #Removing first 384 lines to avoid regex confusion and preface to book
+colnames(huckText)[1] <- 'text'
+huckText <- huckText %>% mutate(book = 'Huckleberry')
+
+
+
+## Altered Code to only have both books
+austen_chapters <- austen_books() %>%
+  filter(book == 'Sense & Sensibility') %>%
+  rbind(huckText)%>%
+  group_by(book)%>%
+  unnest_tokens(chapter, text, token = "regex", 
+                pattern = "CHAPTER ([IVXLC]*\\.|THE LAST|[\\dIVXLC])") %>%
+  ungroup()
+
+##Single book
+huckChapters <- huckText %>% 
+  group_by(book) %>%
+  unnest_tokens(chapter, text, token = "regex", 
+                pattern = "CHAPTER ([IVXLC]*\\.|THE LAST|[\\dIVXLC])") %>%
+  ungroup()
+
+austen_chapters %>% 
+  group_by(book) %>% 
+  summarise(chapters = n())
+
+huckChapters %>%
+  group_by(book) %>% 
+  summarise(chapters = n())
+
+## Original Book Code
+# austen_chapters <- austen_books() %>%
+#   group_by(book) %>%
+#   unnest_tokens(chapter, text, token = "regex", 
+#                 pattern = "Chapter|CHAPTER [\\dIVXLC]") %>%
+#   ungroup()
+# 
+# austen_chapters %>% 
+#   group_by(book) %>% 
+#   summarise(chapters = n())
+
+
+```
+<br>
+<br>
+
+|    We can also use this method to find the most negative chapters in a book by joining with our negative sentiments _(Silge, J., & Robinson, D. 2017, Sec. 2.6)_.
+
+```{r Bing Chapter Negativity}
+#Bing Chapter Negativity
+bingnegative <- get_sentiments("bing") %>% 
+  filter(sentiment == "negative")
+
+wordcounts <- tidyHuck %>%
+  group_by(chapter) %>%
+  summarize(words = n())
+paged_table(wordcounts)
+
+#Chapter Sentiment
+tidyHuck %>%
+  semi_join(bingnegative) %>% #join/filter for negative word matches
+  group_by(chapter) %>%
+  summarize(negativewords = n()) %>%
+  left_join(wordcounts, by = c( "chapter")) %>%
+  mutate(ratio = negativewords/words) %>%
+  filter(chapter != 0) %>%
+  slice_max(ratio, n = 1) %>%  #show only most negative
+  ungroup()
+```
+<br>
+<br>
+
+|    Let's compare this with the Syuzhet lexicon. We will do this using just the ratio as Bing did, but we'll also look at including the numerical score that Syuzhet offers.
+<br>
+```{r Syuzhet Chapter Negativity}
+syuzhetNegative <- nonNeutralSyuzhetCounts %>%
+  filter(sentiment == "negative")
+
+wordcounts <- tidyHuck %>%
+  group_by(chapter) %>%
+  summarize(words = n())
+paged_table(wordcounts)
+
+#Chapter Sentiment
+tidyHuck %>%
+  semi_join(syuzhetNegative) %>% #join/filter for negative word matches
+  group_by(chapter) %>%
+  summarize(negativewords = n()) %>%
+  left_join(wordcounts, by = c( "chapter")) %>% #pulls word count sum to create ratio
+  mutate(ratio = negativewords/words) %>%
+  filter(chapter != 0) %>%
+  slice_max(ratio, n = 1) %>%  #show only most negative
+  ungroup()
+
+# Negative Score
+negativeChapters <- tidyHuck %>%
+  semi_join(syuzhetNegative) %>% #join/filter for negative word matches
+  group_by(chapter) %>%
+  left_join(syuzhetHuckLookup) %>%
+  group_by(chapter) %>%
+  summarize(score = sum(value)) %>%
+  arrange(score)
+paged_table(negativeChapters)
+```
+<br>
+
+|    By ratio, it looks like chapter 22 has the highest ratio of negative words at a .053 ratio (112 words) which is relatively higher than Bing's ratio of Chapter 13 at .036 (76 words).  
+  
+|    If we look at Syuzhet's negative sum, one would judge that Chapter 18 would be the most negative chapter at a total of -109.10 score. This doesn't account for any positive words to balance it out though. Let's add those as well.
+
+```{r}
+syuzhetPositive <- nonNeutralSyuzhetCounts %>%
+  filter(sentiment == "positive")
+
+
+
+syuzhetNeutral <- syuzhetCounts %>%
+  filter(sentiment == 'neutral')
+
+tidyHuck %>%
+  semi_join(syuzhetPositive) %>% #join/filter for negative word matches
+  group_by(chapter) %>%
+  summarize(positivewords = n()) %>%
+  left_join(wordcounts, by = c( "chapter")) %>% #pulls word count sum to create ratio
+  mutate(ratio = positivewords/words) %>%
+  filter(chapter != 0) %>%
+  slice_max(ratio, n = 1) %>%  #show only most negative
+  ungroup()
+
+# Positive Score
+tidyHuck %>%
+  semi_join(syuzhetPositive) %>% #join/filter for negative word matches
+  group_by(chapter) %>%
+  left_join(syuzhetHuckLookup) %>%
+  group_by(chapter) %>%
+  summarize(score = sum(value)) %>%
+  arrange(desc(score)) %>%
+  left_join(negativeChapters, by = 'chapter') %>%
+  mutate(netScore = score.x + score.y) %>%
+  arrange(netScore)
+```
+<br>
+Finally we can compare the two for a net score and it looks like Chapter 2 could be considered the most negative!
+<br>
+
+# Conclusion  
+|    Sentiment Analysis is quite powerful and flexible depending on the lexicons you use. There is quite an art to it as many techniques or decisions in which words to include, how to include context, accounting for negative, and the arguable nature of a quantitative value for emotions are subject to the viewer. Overall, Sentiment Analysis is quite fun and I hope you learned a few new tricks.
+<br>
+
+#### Citations
+Silge, J., & Robinson, D. (2017). Text Mining with R: A Tidy Approach. “O’Reilly Media, Inc.”
