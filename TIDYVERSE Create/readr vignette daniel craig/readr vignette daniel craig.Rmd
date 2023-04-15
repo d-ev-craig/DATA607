@@ -14,6 +14,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
 library(readr)
+library(rmarkdown)
 ```
 
 ## Readr Introduction
@@ -254,7 +255,7 @@ read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20
 ))
 ```
 
-#### Column Specifications for Factors
+#### Specifications for Factor Data
 
 |    If you're unfamiliar with factors in the R world, these can be simplified into categories of a categorical variable. For example, if you have a list of cars, one of the categories may be the manufacturer. Each of these manufacturers are considered a factor. When a column has its type labelled as "factor," it will only ever accept a value in its rows as one of those "factors" (categories).  
   
@@ -262,7 +263,7 @@ read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20
   
 |    Although there a other methods to changing a column name in R, this is an example of how understanding flat file composition can come in handy. We will be using the make as different factors of the categorical variable of manufacturer. This would be a good exercise to follow along with on your end.
 
-##### Data Prep for Factors (optional)
+#### Data Prep for Factors (optional)
 
 To create an example using multiple column types. Let's use the mtcars
 dataset as if we were importing it for the first time. To make this
@@ -310,7 +311,7 @@ write_csv(mtcarsEdit,"C:\\repos\\DATA607\\TIDYVERSE Create\\mtcarsEdit.csv")
 
 |    From here, we will use the github file we just wrote out above, its path is set to a variable below as 'url2,' to use as an example for importing columns as factors with readr.
 
-##### Final Importing & Complete Example
+#### Importing & Complete Example w/ mtcarsEdit
 
 |    Let's say we only want to import the make, mpg, and release date from the modified mtcars dataset just above. We know that the the make should be a factor, as its a categorical variable, the mpg should be a double, and the release date as a date. Recall that integers are whole numbers, doubles can contain decimal points.
 |    Since we know that we're only interested in certain columns, we will use the col_only() sub option in combination with our col_types to get a clean import.
@@ -323,5 +324,105 @@ read_csv(url2, col_types = cols_only(
   relDate = 'D'))
 ```
 
+### How does readr parse data?
+
+|    Let's use a dataset from Kaggle for an example closer to a real-world scenario. You can download the file titled 'A.csv' from the following [link](https://www.kaggle.com/datasets/tanavbajaj/yahoo-finance-all-stocks-dataset-daily-update?resource=download). This file is a csv from the Yahoo Finance API that has quite a few columns. Let's take a look at the results with just a normal read_csv. I'll be accessing this from a file location on github. You can also access it there.
+
+```{r}
+fin <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/yahooKaggleAPI.csv")
+
+paged_table(fin)
+```
+|    Here we can see that the date column has a combined date and time field and a few other numeric columns. What does the parsing process look like for the read_ functions?
+
+#### Parsing Process
+
+|    Parsing takes place in three steps.
+* The text is parsed into a matrix
+* The type of each column is determined
+* Each column of strings is parsed into a more specific vector type
+
+|    The easiest way to understand this is in reverse since this is how the package works. It builds from the smallest unit to the largest.
+
+##### Parsing Vectors
+
+|    The core parsing functions are as follows. They each take a character vector and return a corresponding vector with attributes and any issues.
+
+* parse_integer()
+* parse_double()
+* parse_logical()
+* parse_character()
+* parse_number()
+
+|    It's important to note that parse_integer() and parse_double() are strict and do not take leading or trailing characters. Parse_number(), on the other hand, can handle multiple symbols. Let's use a few of these on our Yahoo Finance csv from Kaggle.
+
+|    Notice we are using the first 3 values in each of the respective columns; Open, Volume 
+```{r}
+parse_double(c("27.761129","26.197654","25.206190"))
+parse_integer(c("62546380","15234146","6577870"))
+parse_number(c("1999-11-18 05:00:00","1999-11-19 05:00:00","1999-11-22 05:00:00"))
+```
+
+|    Notice that the parse_number still failed to interpret the date, but was generous enough to atleast give us the few digits and removed what it believed to be excess characters. These parsers are the first step in one of the read_ functions process to creating tibbles in the tidyverse.
+
+|    To accomodate dates, times, and date-times, readr has the following parsers:
+
+* parse_date() : uses the format determined by the locale
+* parse_time() : uses the format determined by the locale
+* parse_datetime() : recognizes ISO8601 format (an international standard)
+    + this command also allows for specific patterns defined by the user
+    
+```{r}
+parse_datetime(c("1999-11-18 05:00:00","1999-11-19 05:00:00","1999-11-22 05:00:00"))
+```
+
+|    It looks like datetime is the best format, and luckily for us is already in the ISO8601 standard. If you attempt the other date/time parsers, they will fail and return NA's.
+
+|    Parsing factors is the last group of parsers. When parsing factors, readr uses:
+* parse_factor(x, levels): where x is a character vector
+    + if you include a factor not defined in the levels character vector, the function will fail
+```{r}
+parse_factor(c("a", "b", "a"), levels = c("a", "b", "c"))
+```
+
+|    Now that readr can parse for specific data types, the next step is to guess which data types fit each column
+
+##### Guessing Column Types
+
+|    When using one of the read_ functions, they are attempting to guess column types with the use of:
+
+* guess_parser()
+
+```{r}
+guess_parser(c("27.761129"))
+guess_parser(c("62546380"))
+guess_parser(c("1999-11-18 05:00:00"))
+```
+
+|    Take note that the guess parser chose double for our second line in our code chunk and successfully picked datetime for the third. You could argue to expect integer instead of double for the second line, but readr tries to be strict where it can be.
+|    An important note is that a factor will never be guessed since it requires input on what the correct levels should be. A factor will always need to be manually set. The guess_parser will also never assume a column should be skipped and must be told to skip a column with the methods discussed earlier in the read_ functions.
+
+##### Guessing Entire Files
+|    If one wanted to test what column types would be chosen by one of the read_ functions before committing, the following can be used:
+* spec_csv()
+* spec_tsv()
+* spec_<filetype>()
+
+```{r}
+spec_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/yahooKaggleAPI.csv")
+```
+|    For the most part, it looks like we can be happy with these predictions. As a default, readr uses the first 1000 entries in column to guess column types. So if we happened to know that data later in the column would change this, readr has given the ability to extend this guessing parameter with the guess_max option. Let's highlight this using the readr example since the Yahoo Finance csv seems pretty normalized.
+
+```{r}
+x <- spec_csv(readr_example("challenge.csv"), guess_max = 1000)
+y <- spec_csv(readr_example("challenge.csv"), guess_max = 1001)
+x
+y
+
+fin2 <- read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/yahooKaggleAPI.csv", guess_max = 2000)
+spec(fin2)
+```
+|    Here we can see that when we changed the guess max from 1000 to 1001 the column type changed for the readr example. When using this option to 2000 on the Yahoo Finance csv, nothing changed.
+
 ## Readr Conclusion & Beyond
-Readr provides a simple but thorough package to handle importing data. If one wanted to delve further into the readr package, a good place to start could be looking at the melt_ function for non-rectangular data or the parser functions that drive the read_ functions we just used.
+Readr provides a simple but thorough package to handle importing data. If one wanted to delve further into the readr package, a good place to start could be looking at the melt_ function for non-rectangular data.
