@@ -1,0 +1,327 @@
+---
+title: "readr Vignette Daniel Craig"
+author: "Daniel Craig"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
+library(readr)
+```
+
+## Readr Introduction
+
+```{r echo = FALSE}
+knitr::include_graphics('..\\readr vignette daniel craig\\assets\\readr.png')
+```
+
+In this vignette, we will focus on the readr package and its ability to
+parse files into tables from data files such as csv's and tsv's.\
+We will cover the material in two sections; Functions & Column
+Specifications
+
+You can read more about the readr package here:
+[https://readr.tidyverse.org/](link).
+
+### Main Functions
+
+The main functions from the readr package are focused on the different
+categories of flat file formats to contain data.
+
+A file and command will be made for each so that the user can view the
+file structure outside of R and the command associated with it.
+
+Take a look at each of the linked files to get an idea of the structure
+and run the associated function.
+
+#### **read_csv():** comma-separated values (CSV)\
+* this file has each column separated by commas\
+[CSV
+Example](https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv_format.txt)
+
+```{r echo=FALSE}
+read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv_format.txt")
+```
+
+#### **read_tsv():** tab-separated values (TSV)\
+* this file has each column separated by tabs\
+[TSV
+Example](https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/tsv_format.txt)
+
+```{r}
+read_tsv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/tsv_format.txt")
+```
+
+#### **read_csv2():** semicolon-separated values with a comma as the decimal mark for numbers
+* this file has each column separated by semicolons and any numbers that
+have decimal values have a comma to replace them\
+[CSV2
+Example](https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv2_format.txt)
+
+```{r}
+read_csv2("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv2_format.txt")
+```
+
+#### **read_delim():** generic delimited files
+* this command is a generic version of the read_csv command that allow
+the user to select the delimiter, in this example we use '\|'\
+[Generic Delim
+Example](https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/delim_format.txt)
+
+```{r}
+read_delim("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/delim_format.txt", delim = "|")
+```
+
+#### **read_fwf():** fixed-width files
+* this file has the start and end of columns at specifically stated
+dimensions, ie. the first column ends on character 9, and the second
+column ends on the 20th character
+* note that this function cannot handle
+urls
+
+For this reason, we will use
+the readr example.
+
+There are several options to be used with read_fwf.
+
+```{r}
+fwf_sample <- readr_example("fwf-sample.txt")
+writeLines(read_lines(fwf_sample))
+```
+
+  
+* fwf_empty() - Guesses based on the positions of empty columns
+
+```{r}
+read_fwf(fwf_sample, fwf_empty(fwf_sample, col_names = c("first", "last", "state", "ssn")))
+```
+  
+* fwf_widths() - Supply the widths of each column  
+
+
+Notice we combined first and last names by denoting the column
+width for the first column to be 20.
+
+```{r}
+read_fwf(fwf_sample, fwf_widths(c(20, 10, 12), c("name", "state", "ssn")))
+```
+
+         
+* fwf_positions() - Supply paired vectors of start and end positions  
+
+Notice the vectors passed to fwf_samples are read as
+fwf_positions(c(**start_position_vec1, start_position_vec2**),
+c(**end_position_vec1, end_position_vec2**)). Do not read them as
+c(start_position_vec1, end_position_vec2).
+
+```{r}
+read_fwf(fwf_sample, fwf_positions(c(1, 30), c(20, 42), c("name", "ssn")))
+```
+
+* fwf_cols() - Supply column names and their respective lengths
+
+Note that subsequent named columns will determine the start of its
+column by noting the position the previous column ended. I.E. The name
+column is the first column and lasts 20 characters. The state column
+starts at character 21 and continues for 10 more characters. The ssn
+column starts at character 31 and ends 12 characters later. The user
+only needs to tell fwf_cols how long each column is.
+
+```{r}
+read_fwf(fwf_sample, fwf_cols(name = 20, state = 10, ssn = 12))
+```
+
+#### **read_table():** whitespace separated files
+* this file designates columns at either ends of whitespace and removes
+the whitespace afterwards
+[Whitespace Example](https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/whitespace_format.txt) 
+
+```{r}
+read_table("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/whitespace_format.txt")
+```
+
+#### **read_log():** web log files
+* uses a combination of quotation marks and brackets in file structure
+[Log Example](https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/example.log) 
+
+```{r}
+read_log("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/example.log")
+```
+
+### Column Specifications
+
+|    Readr will naturally make guesses about the best column type to use
+by parsing out 1000 values in a particular column. By default, it
+usually works acceptably well. Sometimes it needs a more delicate touch
+and the readr package will allow the user to specify these column types
+during import with one of the read\_ functions.
+
+|    In each of these read functions, readr will allow the user to specify column types by passing their read function a list. There is also an option that allows skipping a column. This is quite useful in the early
+stages of data tidying to avoid any column type changes or column drops
+in the middle of computations/transformations that are type specific
+that normally pop up in tidying. This allows the user to keep a very
+clean workflow.
+
+An exhaustive list of types is below with abbreviations in brackets:
+
+-   col_logical() [l], containing only T, F, TRUE or FALSE
+
+-   col_integer() [i], integers
+
+-   col_double() [d], doubles
+
+-   col_character() [c], everything else
+
+-   col_factor(levels, ordered) [f], a fixed set of values
+
+-   col_date(format = "") [D]: with the locale's date_format
+
+-   col_time(format ="") [t]: with the locale's time_format
+
+-   col_datetime(format ="") [T]: ISO8601 date times
+
+-   col_number() [n], numbers containing the grouping_mark
+
+-   col_skip() [ \_ , -], don't import this column
+
+-   col_guess() [?], parse using the "best" type based on the input
+
+|    Let's use a few of these to gain some experience. In this first
+example, we will be as verbose as possible in our code.
+
+|    In the below example, we follow the standard syntax of read_csv.
+
+read_csv(file,
+
+|             col_types = list(
+
+|                               column_name = column_type(),
+
+|                               ....
+
+|                               )
+
+|          )
+
+```{r colTypes, echo=FALSE}
+read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv_format.txt", col_types = list(
+  column1 = col_character(),
+  column2 = col_character(),
+  column3 = col_character()
+))
+```
+
+In this example, let's try to cut down on typing. We can avoid denoting
+each column and the full type by using the col type's abbreviation for
+each column from the list earlier.
+
+```{r}
+read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv_format.txt", col_types = list(
+  'c',
+  'c',
+  'c'
+))
+```
+
+Let's say we want to skip a column. There are two methods to achieve
+this. One by using the abbreviation and the other by using the
+cols_only() option. In this example, lets skip the 2nd column via
+abbreviation.
+
+```{r}
+read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv_format.txt", col_types = list(
+  'c',
+  '_', # You can also use '-' instead of '_'
+  'c'
+))
+```
+
+Now with the cols_only option instead of abbreviation. This option is
+useful when you have many columns and are already aware of the few
+you're interested in.
+
+```{r}
+read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/csv_format.txt", col_types = cols_only(
+  column1 = 'c',
+  column2 = 'c'
+))
+```
+
+#### Column Specifications for Factors
+
+|    If you're unfamiliar with factors in the R world, these can be simplified into categories of a categorical variable. For example, if you have a list of cars, one of the categories may be the manufacturer. Each of these manufacturers are considered a factor. When a column has its type labelled as "factor," it will only ever accept a value in its rows as one of those "factors" (categories).  
+  
+|    For this example, we will use a slightly modified version of the mtcars data set. The only change made was setting the first column to be the make of the car by printing the mtcars data to csv, opening the file, and typing the column name in.  
+  
+|    Although there a other methods to changing a column name in R, this is an example of how understanding flat file composition can come in handy. We will be using the make as different factors of the categorical variable of manufacturer. This would be a good exercise to follow along with on your end.
+
+##### Data Prep for Factors (optional)
+
+To create an example using multiple column types. Let's use the mtcars
+dataset as if we were importing it for the first time. To make this
+example fitting, I would like to include a factor variable and a date
+variable.
+
+Let's first 'add' the factor variable by naming the first column of the
+mtcars data set. I first print the mtcars dataset with write.csv.
+
+```{r}
+library(stringr)
+write.csv(mtcars,"C:\\repos\\DATA607\\TIDYVERSE Create\\mtcarsReadr.csv")
+
+```
+I open
+this csv file and add a make column by following the file structure and
+save it as a new file.  
+  
+![](..%5Creadr%20vignette%20daniel%20craig%5Cassets%5CmakeAdd.gif)
+  
+From here, I will read the file back in with read_csv and edit the first
+column so that it only contains the manufacturers.
+
+```{r}
+mtcarsEdit <- read_csv("C:\\repos\\DATA607\\TIDYVERSE Create\\mtcarsMake.csv")
+
+#Removing excess text
+mtcarsEdit$make <- str_remove(mtcarsEdit$make, " .*")
+```
+
+I then create a vector of dates and bind them to the mtcarsEdit data
+frame. I re-write this using another function from readr, write_csv.
+
+```{r}
+#Creating a date column for use in the next example
+relDate <- c(sample(seq(as.Date('1970/01/01'), as.Date('1980/01/01'), by="day"), 32))
+
+#Combining the original mtcars dataframe and the new date column
+mtcarsEdit <- cbind(mtcarsEdit,relDate)
+mtcarsEdit
+
+#I re-printed and pushed to github to make available for those that do not wish to copy the previous steps
+write_csv(mtcarsEdit,"C:\\repos\\DATA607\\TIDYVERSE Create\\mtcarsEdit.csv")
+```
+
+|    From here, we will use the github file we just wrote out above, its path is set to a variable below as 'url2,' to use as an example for importing columns as factors with readr.
+
+##### Final Importing & Complete Example
+
+|    Let's say we only want to import the make, mpg, and release date from the modified mtcars dataset just above. We know that the the make should be a factor, as its a categorical variable, the mpg should be a double, and the release date as a date. Recall that integers are whole numbers, doubles can contain decimal points.
+|    Since we know that we're only interested in certain columns, we will use the col_only() sub option in combination with our col_types to get a clean import.
+
+```{r}
+url2 <- "https://raw.githubusercontent.com/d-ev-craig/DATA607/main/TIDYVERSE%20Create/mtcarsEdit.csv"
+read_csv(url2, col_types = cols_only(
+  make = 'f',
+  mpg = 'd',
+  relDate = 'D'))
+```
+
+## Readr Conclusion & Beyond
+Readr provides a simple but thorough package to handle importing data. If one wanted to delve further into the readr package, a good place to start could be looking at the melt_ function for non-rectangular data or the parser functions that drive the read_ functions we just used.
