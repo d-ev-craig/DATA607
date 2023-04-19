@@ -1,0 +1,152 @@
+---
+title: "Youtube Recommender Analysis & Discussion"
+author: "Daniel Craig"
+date: "2023-04-17"
+output: rmdformats::readthedown
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, message = FALSE, echo = FALSE)
+```
+<style type="text/css">
+  body{
+  font-size: 12pt;
+  font-family: Times New Roman;
+  line-height:2;
+}
+</style>
+
+This is to serve as a personal understanding of the features and make-up of the youtube 'algorithm' that is oft mentioned by content creator and consumer alike. Much of this will be paraphrasing from the paper posted, which is linked a bit below this. Feel free to read. I hope it will be helpful. All images are pulled from the document.
+
+Note: Anything with an italics has a note at the bottom with potential new words or further understanding. 
+
+
+## Scenario Design
+Who are the target users of the recommender system? What is the goal? How can it accomplish this?
+
+1) Target Users: Any and all viewers of youtube content
+
+2) Pick content related to their current interest or mood (funny, knowledge, topic-related, music, etc.)
+
+3) Identify their patterns, interests, demographics, routines, and habits and use those to match with content that matches factors aligning with those user characteristics
+
+
+
+## Reverse Engineering
+
+ Firstly, I'm drawing the majority of this info from the following source(s):
+
+[Deep Neural Networks for Youtube Recommendations by Paul Covington, Jay Adams, and Emre Sargin](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf)
+
+
+|        I must say that the conclusions section of the paper is so well written in an easily understandable form that I highly recommend reading it first. I will paraphrase as best I can in this written understanding of their recommender system at the end, but again highly recommend individuals read it for themselves. I have no doubt that there will be concepts that are either mis-represented or not shown. View this as a personal understanding and takeaway discussion starter. If there are any mis-representations, feel free to comment or contact me and let me know! I'd love to learn more.
+
+## Overview of the Model
+|        The goal of youtube's recommendation feed is to suggest the next most likely watched video to the user. That may be a bit un-intuitive as for something to be the most likely watched, it is predicated on the fact that it is watched, but the paper gets into that. To accomplish this recommendation, there are two neural networks at play. One for generation of candidates. Another for ranking said candidates.The candidate generation network utilizes user history to populate hundreds of candidates. The candidates are meant to be generally relevant by use of collaborative filtering and are then handed off to be ranked. The ranking network assigned a score to each video by a function of features that describe the user and video. The highest ranked are then presented. This two pronged approach allows the ability to filter down from millions of videos to a curated set of ranked suggestions.
+<br>
+
+```{r, out.width="110%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\Figure 2.png")
+```
+<br>
+
+### Modelling Recommendation
+
+|        The problem of recommendation is, in their words,  a "multiclass classification where the prediction problem becomes accurately classifying a specific video watch, *W*, at time, *T*, among millions of videos, *I* (classes) ,from a corpus, *V*, based on a user, *U*, and context, *C* 
+<br>
+
+```{r, out.width="110%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\Context C Formula.png")
+```
+
+|        If the context and embedding pair values are the solution, how does Youtube's model accurately create predictions? It does this by creating an "embedding", which can be thought of as a categorical indicator of both the user and the video, in the sense that if they're both in the same cateogry, it's more likely the video and user will have a higher context rating and likelihood of being a good match for a user to view the video. 
+|        Context, C, mentioned above, is dependent on creating "embeddings" of user history/content selection and the "embeddings" of video content. These embeddings can be used to create pairs between user and video to give a base for evaluating appropriate content. Classification occurs by the neural network as functions of "the user’s history and context that are useful for discriminating among videos with a *softmax* classifier", by using the embeddings described earlier to generate mathematical values to quantify by.
+|        The model learns how to classify via implicit feedback (watch time, clicks, subscribed channels, etc.) and NOT explicit feedback(likes, dislikes). This was due to the significantly larger amount of implicit feedback data Youtube had over explicit.
+
+### Training the Model
+
+|        Now that we know how to present the problem to the model, how does one train a model to classify videos in accordance with the user? With the never ending stream of video content uploaded by users, the first task is to filter. Recall that for Youtube, it was chosen to break this problem down into generating candidates and ranking those candidates.
+
+|        In general, this graphic shows that the model pulls millions of videos for candidate generation, which are filtered down by using user history and context, and is then filtered again by adding video features and accounting for other candidate sources (ie. watched and was not recommended by the recommender) to create ranks. These videos are then shown to the user in a manageable list by rank. So let's dive into how candidate generation is executed.
+<br>
+
+```{r, out.width="110%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\Figure 2.png")
+```
+<br>
+
+#### Candidate Generation
+|        User History and Context are the main drivers for filtering in Candidate Generation and Ranking of videos from the corpus. By teaching the model how to filter videos and classify, it can then classify videos in relation to likelihood of being watched. resulting in a candidate with a higher recommendation. But how did they train the model to filter candidates correctly?  
+|        The answer is feeding a *feedforward neural net* the previously mentioned video embeddings. Using a technique to sample negative classes (aka videos that received a negative value in classification due to not being clicked by a user) and then corrected by importance weighting, they could train the model to filter efficiently. The technique used can be read more about here: [On Using Very Large Target Vocabulary for Neural Machine Translation](https://arxiv.org/abs/1412.2007).
+|        Commonly used approaches such as traditional *softmax* and hierarchical *softmax* were shown to be less accurate or much more time consuming. Hierarchical softmax degraded in performance due to having to transverse across unrelated classes. This caused accuracy and time issues since youtube's classification problem had millions of classes (imagine how many different kinds of videos there are on youtube). Below is a graphic of the model used. At serving time, they noted that the scoring from the softmax layer was unnecessary, the problem would turn into a nearest neighbor search. A grahic showing the model for candidate generation is below.
+<br>
+
+```{r, out.width="105%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\Figure 3 Candidate Generation.png")
+```
+<br>
+
+|        For those well versed in this area, you may wonder why a matrix multiplication system was not used. The team noted that the ability to add in arbitrary features was much easier to accomplish in a deep neural net. Matrices with concrete dimensions are a pain to deal with when adding or removing features. With as many potential features that Youtube's videos could have, it was easier to use the neural net. This became extremely important since the team needed a way to deal with certain features over-centralizing.  An example of one of these features would be age of videos or topic of videos. In short, the model would naturally fill a recommendation page with videos that had the same topic or "labels" as what was just searched or viewed for by the user. One may think that this is perfect, but it's better to think about viewers watching content in a sequential form. This leads us to the next concept used by the team. Solving a surrogate problem, rather than the actual problem to deal with these over-centralizing features.
+<br>
+
+#### The Surrogate Problem
+|        Recommendation is often tied to a *surrogate problem*. The original problem for Youtube was to solve, "what video does the viewer want to watch?" As previously mentioned, showing a recommendation page full of Taylor Swift videos, right after the viewer just watched one, actually didn't perform well in their testing. On the other hand, video popularity was extremely variant and the model would average popularity over several weeks. Most videos pull their  Unfortunately, the model naturally filled the recommendation page up with extremely recent videos all on the most recently viewed topic. To handle this, Youtube changed their focus to solving a surrogate problem. Their surrogate problem was chosen to be "what video would the next most likely video watched by the user be?" This showed great improvement in their *A/B testing*. But how did they translate this into changes for the model? An example of this change would be handling video age.
+|        Recently created videos are heavily sought after, but the model would average a video's popularity and likelihood of being watched over a few weeks. Resolving this was done by feeding age as a feature during training. A figure below shows the impact of video candidate generation after including the age feature.
+<br>
+
+```{r, out.width="105%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\Figure 4.png")
+```
+<br>
+
+|        To resolve this, the team chose to randomly select video watches from the user's history and remove that video's labels(i.e. category of content) from being input into the model. This left only the user's previous actions leading up to the watch, which could range over several topics and would then ensure the most recent video's label (ie "taylor swift") overwhelming the recommendation page. Effectively, the way I understand this, is they're keeping their model from overfitting to criteria that are normally over-centralizing just like the concept in statistics is to reduce how outliers impact the mean as we attempt to create an understanding of things broadly. This handled overloading the feed with one recently searched category, but does not handle only viewing recently uploaded videos.
+<br>
+
+```{r, out.width="110%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\Figure 5.png")
+```
+<br>
+
+|        These are the basic ideas of candidate generation in Youtube's recommender. Ranking is accomplished with another deep neural net, similar to candidate generation, that uses logistic regression to assign a rank to each video based on a set of features that is significantly larger than what was used for candidate generation. This increased set of features is possible since the number of videos has been reduced from millions to hundreds, thus allowing "room" for other data.
+<br>
+
+#### Ranking
+|        Features were in several groups. Categorical, continuous, and ordinal; with some categories being binary or having millions of options pending the user's last search. Features were also organized by whether they contributed to a single value or a set of values. An example of a single value feature would be a video ID, where a set of values could be a list of the last 10 video ID's viewed by the user. Features were also classified by whether they were classified properties of the item, aka impressions, or properties of user/context, aka queries. Query features were computed once per ranking request and impression features were computed for each video ranked.
+|        Features are engineered by human resources to convert user and video data into useful features that relate to how that video impression was scored. This is quite the challenge, but have found that the most important signals for this are the ones that describe user interaction with previous videos or related items like ads. Strong features were found to be how many videos a user has watched from that channel or the last time the topic was viewed. These also generalize well. Key features tend to be frequency viewed and last time viewed so that recommendations can keep up with viewer interests as they develop. 
+|        Categorical features were captured by embeddings, similar to the ones described earlier, using vocabulary sets. Continuous features are all normalized before being fed into the model. These features could be univalent or multivalent, meaning they could contribute to one or more values.
+<br>
+
+```{r, out.width="105%",fig.align="center"}
+knitr::include_graphics("..\\Week 11 - Recommender Systems\\Recommender Discussion Assets\\FIgure 7.png")
+```
+<br>
+
+##### Modeling Expected Watch Time
+|        Using the features in ranking to model expected watch time is the core of video ranking for recommendations. These rankings are calculated by weighted logistic regression, which was created for this very purpose. Positive examples where the video was watched are weighted by the amount of time they were watched for. Negative examples all receive the same weight. Odds learned by the regression come out to be : $$\frac{\sum(T_i)}{N-k}$$ where N is the number of examples, k is the number of positive examples, and T is the watch time of the *i*th example.Ultimately, the ranking comes out to be the $\mathbb{E}[T](1+P)$, the expectation of watch time, T, and P being the probability of being clicked on. What's interesting to think about is that each ranked video would then likely have some probability of being clicked and that if the viewer clicks it, the model would have an expectation of how long the viewer would watch it. You can think about that the next time you're scrolling through your recommended feed.
+|        Since the model was trained on both videos that were and were not clicked, and uses the expectation of watch time as a component, something that seems uncaptured by this weighting method is the predication that for a video to be watched, it must be clicked. Using an expectation of watch time and its product with the probability of being clicked to create a ranking seems like an odd method. Of course, I can't really suggest a better way, but I thought it interesting to think about!
+|        On this note, there were experiments performed to capture positive examples receiving lower scores than negative examples and were called *mispredicted watch time*. Recall that positive means it was watched and negative means it was not. Tests were made to attempt to reduce this as a fraction over total watch time by using hidden layers in the neural net, but at the cost of processing time.
+<br>
+
+## Conclusions
+|        The conclusions paragraph in the paper is so absolutely well written I have a hard time not just pasting it here. I highly recommend anyone interested in the topic read that. Overall, my personal takeaways are that classification can be used to answer problems pending next best choice by classifying examples by their likelihood of matching the characteristics of the next best choice. Youtube used a double neural net setup to generate candidates and then to rank them, to filter videos for their users. Surrogate problems can help change the perspective in which an engineer approaches a problem that can have substantial improvement in solving the "real" problem. I really quite enjoyed seeing how their team translated the "real life issue" into what it meant for the model. An example of this is handling the video age problem by inputting age as a feature into training, even when it meant inputting some manually selected values in negatives or zero value features, to accomplish the behavior they wanted to see from the net.
+<br>
+
+### Asides/Lookups/Notes:
+
+[Deep Neural Networks for Youtube Recommendations by Paul Covington, Jay Adams, Emre Sargin at Google {pcovington, jka, msargin}@google.com](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf) Written in 2016
+
+
+[Embeddings](https://developers.google.com/machine-learning/crash-course/embeddings/video-lecture#:~:text=An%20embedding%20is%20a%20relatively,like%20sparse%20vectors%20representing%20words.): Imagine these as complex labels that are derived by matching video and user content features such as searches, content labels, and other contextual variables (age, demographic, etc.) and are used to identify a match between user and video
+
+ [Feed Forward Neural Net](https://deepai.org/machine-learning-glossary-and-terms/feed-forward-neural-network)
+
+[Softmax Classifier](https://machinelearningmastery.com/introduction-to-softmax-classifier-in-pytorch/#:~:text=While%20a%20logistic%20regression%20classifier,probability%20distribution%20to%20each%20class.): While a logistic regression classifier is used for binary class classification, softmax classifier is a supervised learning algorithm which is mostly used when multiple classes are involved. Softmax classifier works by assigning a probability distribution to each class 
+
+[Hierarchical softmax](https://www.ruder.io/word-embeddings-softmax/#:~:text=Hierarchical%20softmax%20(H%2DSoftmax),be%20seen%20in%20Figure%201.): Effectively a hierarchical form of binary approximation where words are replaced into the in the softmax layer instead of numerical values 
+
+[Softmax Layer](https://deepai.org/machine-learning-glossary-and-terms/softmax-layer): In the output layer of a neural net, the last set of nodes may all pop out some numerical value (we'll say a sigmoid value meaning between 0 and 1). What if the value the node spits out is .5? This also doesn't take into account what the other nodes in the last layer state either. To deal with this, a softmax activation function is used to incorporate the likelihood that an observation is apart of whichever class that node suggests (as opposed to other nodes) which accomodates a multi-class problem (rather than the typical sigmoid/binary classification problem). 
+
+*A/B Testing*: A/B testing is used in experimentation. Users are split into two groups where each receive a specific version of a variable to be tested. This allows a clear indication of better performance.
+
+*Surrogate Problem*: A secondary or alternative method of viewing an original problem that accomplishes the same goal or solves the issue. For example, an original problem could be "What should I recommend this user to watch?", while its surrogate problem is determining "How much time will this user watch this video for?" By answering the second question, we have an effective way of solving the original problem. Thus the 2nd question about watch time would be considered a surrogate problem.
