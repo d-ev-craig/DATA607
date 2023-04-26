@@ -1,0 +1,178 @@
+---
+title: "Classification w/ Decision Trees"
+author: "Daniel Craig"
+date: "2023-04-26"
+output: rmdformats::readthedown
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, message = FALSE, echo = TRUE, warning = FALSE)
+
+library(readr)
+library(dplyr)
+library(randomForest)
+library(caret)
+library(ggplot2)
+library(DT)
+library(knitr)
+library(tree)
+library(rmarkdown)
+```
+<style type="text/css">
+  body{
+  font-size: 12pt;
+  font-family: Times New Roman;
+  line-height:2;
+}
+</style>
+
+# Introduction:
+|       The purpose of this project will be to attempt to classify a win or a loss pending game metrics. This project will use a favorite passion of mine, a competitive video game called "Dota 2." It holds the record for the largest overall prize pool of all "eSports" for the top 7 spots and holds 8 out of the top 10 spots.
+```{r, out.width="110%",fig.align="center"}
+knitr::include_graphics("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project4%20-%20'Document'%20Classification/Prize.png")
+```
+
+|        $40 million isn't too shabby, eh? Ignoring our dreams of playing video games to earn money, let's come back to reality and see if we can't predict a win for one of these games. Great for betting, if you're into that. Before we get into predicting a win, I'd like to go over some basics of the game.
+
+1. There are 5 players to a team and 2 teams that play against each other, for 10 total players
+2. There are hundreds of heroes you can choose to play as
+3. These 5 heroes are chosen by the teams before play begins in an alternating fashion
+4. These 5 players and their chosen heroes fight against each other to gain gold, kill the enemy team, destroy the enemy buildings, and win the game once the most important building is destroyed
+
+|       For this project of classification, we are going to try and predict/classify a win using some game variables while holding one variable constant. That variable will be the hero, and in this case my favorite hero, Nature's Prophet. We won't get into the fine details but to give you an idea the hero is a heavily objective based hero that has the ability to teleport to different locations and spawn little servants that help him destroy buildings. Due to this, the hero is considered to be playing his best when taking buildings. This is important since it will have an impact of some of his game stats and what we can expect.
+|       To give you a face to the name, below are a few of Nature's Prophets spells he can cast in the game. Picture was clipped together from [Dota's official site](https://www.dota2.com/hero/nature'sprophet)
+```{r, out.width="95%",fig.align="center", echo = FALSE}
+knitr::include_graphics("https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project4%20-%20'Document'%20Classification/NPFace.png?raw=true")
+```
+
+
+## Data Collection
+
+|       This data was gathered by using [OpenDota]("https://www.opendota.com/"), an API that allows for parsing all matches played in the game. I used their website to generate the csv since their GUI was so easy to use. I went ahead and removed some information like player id, match id, and match time since we don't want these to influence our predictions.
+
+### Data Cleaning & Variable Explanation
+
+```{r}
+npData<-read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project4%20-%20'Document'%20Classification/NPBase.csv")
+npData$gold <- as.numeric(npData$gold)
+npData <- npData[,-c(1:2,4,5:6)]
+dataModel <- data.frame(npData)
+dataModel$win <- as.factor(dataModel$win)
+dataModel$lane <- as.factor(dataModel$lane)
+dataModel$lane_role <- as.factor(dataModel$lane_role)
+paged_table(dataModel)
+
+```
+### Variables in Context
+|       Some variables with explanation below:
+
+1. Gold_per_min: How much gold this hero earned a minute (the higher the better, more gold means more items purchased which means the hero is stronger)
+2. Net Worth: Rough indicator of how much the hero was worth at the end of the game (higher net worth means more items means the hero is stronger)
+3. Gold: Amount of gold the hero ended the game on (Did they have a lot of extra gold? Did they spend everything?)
+4. Kills: How many times did this hero kill an enemy hero
+5. Tower Damage: How much damage to buildings the hero did(remember, the game ends when the most important building falls)
+6. Duration: How long did the game last (mm:ss)
+7. Lane: Ranked from 1 -3, characterizes the first 10-12 minutes of a game. 1 will typically be easier, while 3 is a bit harder.
+8. Lane_Role: Ranked from 1 - 5, represents the team's priority of the hero. If it's ranked 1, teammates will sacrifice their life to save yours, or give you preferential areas of the map.
+
+## Training the Decision Tree
+
+|       We will be using the tree and caret packages to perform our training. The basic idea behind a decision tree is to identify critical points in a variable's value that influence it to be more of a yes vs a no in terms of classifying. 
+
+1. I use caret's createDataPartition command to create a 70/30 split to train/test on (train on 70% / test on 30%)
+```{r}
+## Set Training Data
+dataIndex <- createDataPartition(dataModel$win, p = .7, list = FALSE) #Creates a list containing 70% of the records and puts them into a vector
+
+dataTrain <- dataModel[dataIndex, ] # Selects the rows of our dataset we want to train(which are the 70% we chose in our dataIndex line)
+
+paged_table(dataTrain)
+
+## Set Testing Data
+dataTest <- dataModel[-dataIndex, ] #Selects rows of our dataset that were not used for training
+paged_table(dataTest)
+```
+
+
+2. I train our decision tree and print out a summary of the tree.
+```{r}
+#Train our Decision Tree
+classTreeFit <- tree(win ~ ., data = dataTrain)
+summary(classTreeFit)
+
+#Plot it and admire its beauty
+plot(classTreeFit, show.node.label=TRUE)
+text(classTreeFit,pretty=0,cex=0.7)
+```
+|       From our tree, we can see the remaining error in the tree is about 25% with a 6% misclassification rate. This is really pretty good to start off with. Let's try pruning it to simplify the tree without losing too much accuracy.
+
+
+3. Post-pruning
+```{r}
+#Pruning Our Tree
+
+##Getting the misclass rate
+pruneFit <- cv.tree(classTreeFit, FUN = prune.misclass)
+pruneFit
+
+##
+dfPruneFit <- cbind(size=pruneFit$size,dev=pruneFit$dev) #Grabbing the Size and Dev classes as these show the least amount of 'deviations' aka bad classifications and the relative size.
+dfPruneFit <- data.frame(dfPruneFit)
+dfPruneFit <- dfPruneFit %>% group_by(size)%>%arrange(size)%>%arrange(dev)
+dfPruneFit
+
+bestVal <- dfPruneFit$size[1] #Sets our best number of tree branches to a variable to use later
+
+# Using our pruned misclass rate to alter our training
+pruneFitFinal <- prune.misclass(classTreeFit, best = bestVal) #Use our bestVal to prune our tree
+summary(pruneFitFinal)
+
+plot(pruneFitFinal, show.node.label=TRUE)
+text(pruneFitFinal,pretty=0,cex=0.7)
+
+## Prune Graph Generate
+plot(pruneFit$size, pruneFit$dev, type = "b")
+```
+
+|       You can tell by the plot of dev v size, that 8 is the lowest and isn't too many extra nodes, so we will prune the tree back to that. Our residual mean deviance increases up to 42% which is quite a bit higher, but out mis-classification error rate stays the same.
+
+
+## Making Predictions
+
+|       From here we can now use our trained tree's to predict on our test partition of the dataset. I created a few tables to compare the misclassifications from both the un-pruned and pruned version of the tree.
+```{r}
+#Predicting on the test set
+fullPred <- predict(classTreeFit, dplyr::select(dataTest, -"win"), type = "class") #predict using the classTreeFit trained decision tree on the dataTest dataframe without the win column
+
+fullTbl <- table(data.frame(fullPred, dataTest$win))
+fullTbl
+
+accFull<-sum(diag(fullTbl)/sum(fullTbl))
+accFull
+  
+prunePred <- predict(pruneFitFinal, dplyr::select(dataTest, -"win"), type = "class")
+  
+pruneTbl <- table(data.frame(prunePred, dataTest$win))
+
+pruneTbl
+accPrun<-sum(diag(pruneTbl)/sum(pruneTbl))
+accPrun
+```
+
+|       As you can see, we have identical prediction capabilities between the two trees. Looks like the pruning is worth it.
+```{r Outcomes}
+
+print(paste0("The pruned tree had an accuracy of ",accPrun," and the un-pruned tree had an accuracy of ",accFull," when it came to predicting the win with the hero Nature's Prophet."))
+
+```
+
+# Conclusions
+|       Let's take a look at our pruned decision tree and see what the Gini index helped the tree choose as the most important variables.
+```{r}
+plot(pruneFitFinal, show.node.label=TRUE)
+text(pruneFitFinal,pretty=0,cex=0.7)
+```
+
+|       The biggest factor seemed to be tower damage. This aligns with some of the hero context I mentioned earlier, that the hero is best played when focusing on dealing damage to buildings. The next biggest factor was duration of the game. So let's imagine going down the right path of the root tower damage node.. if we deal more than 8793 damage to a tower, and our game is less than 24 minutes, we most likely win with this hero. If we go longer than 24 minutes, our next most important factor is again our tower damage, but it has to jump all the way to 20,000 damage. That is quite a lot. I would interpret this as some type of timing in the game is important for this hero, and if you miss that timing, your next best bet is to plan on a longer game where you deal more damage to buildings. Let's interpret the left side of the tree.
+|       If our tower damage is less than 8793 and the game went longer than 17 minutes, we lost. This probably means at some point the hero was unable to hit buildings, most likely from having to play defensively. If the game is shorter than 17 minutes, the best way out is by prioritizing kills. Most games last 25 or more minutes, but its good to know that if one felt like they won't be able to end the game at 25 minutes, the next best bet is to aim for kills early and end it at 17.
+|       Decision trees are useful for how easy it is to interpret them. There are some criticisms about how accurate they can get and there are methods such as boosting, bagging, and randomizing forests, but this is one way to classify something. Other methods in the supervised realm are Support Vector Machines or K Nearest Neighbors. For the unsupervised, you could look at K-Means Clustering, Hierarchical Clustering, and Principal Component Analysis (PCA).
