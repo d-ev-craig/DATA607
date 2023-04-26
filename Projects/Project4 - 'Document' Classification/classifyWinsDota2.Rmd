@@ -17,6 +17,8 @@ library(DT)
 library(knitr)
 library(tree)
 library(rmarkdown)
+library(httr)    
+set_config(use_proxy(url="10.3.100.207",port=8080))
 ```
 <style type="text/css">
   body{
@@ -40,8 +42,9 @@ knitr::include_graphics("https://raw.githubusercontent.com/d-ev-craig/DATA607/ma
 4. These 5 players and their chosen heroes fight against each other to gain gold, kill the enemy team, destroy the enemy buildings, and win the game once the most important building is destroyed
 
 |       For this project of classification, we are going to try and predict/classify a win using some game variables while holding one variable constant. That variable will be the hero, and in this case my favorite hero, Nature's Prophet. We won't get into the fine details but to give you an idea the hero is a heavily objective based hero that has the ability to teleport to different locations and spawn little servants that help him destroy buildings. Due to this, the hero is considered to be playing his best when taking buildings. This is important since it will have an impact of some of his game stats and what we can expect.
-|       To give you a face to the name, below are a few of Nature's Prophets spells he can cast in the game.
-```{r, out.width="95%",fig.align="center"}
+|       To give you a face to the name, below are a few of Nature's Prophets spells he can cast in the game. GIF was clipped together from [Dota's official site](https://www.dota2.com/hero/nature'sprophet)
+```{r, out.width="95%",fig.align="center", echo = FALSE}
+knitr::include_graphics("https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project4%20-%20'Document'%20Classification/npFace.gif?raw=true")
 knitr::include_graphics("https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project4%20-%20'Document'%20Classification/npAbilities.gif?raw=true")
 ```
 
@@ -53,7 +56,7 @@ knitr::include_graphics("https://github.com/d-ev-craig/DATA607/blob/main/Project
 ### Data Cleaning & Variable Explanation
 
 ```{r}
-npData<-read_csv("C:\\repos\\DATA607\\Projects\\Project4 - 'Document' Classification\\NPBase.csv")
+npData<-read_csv("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project4%20-%20'Document'%20Classification/NPBase.csv")
 npData$gold <- as.numeric(npData$gold)
 npData <- npData[,-c(1:2,4,5:6)]
 dataModel <- data.frame(npData)
