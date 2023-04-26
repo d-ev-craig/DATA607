@@ -29,7 +29,7 @@ library(rmarkdown)
 # Introduction:
 |       The purpose of this project will be to attempt to classify a win or a loss pending game metrics. This project will use a favorite passion of mine, a competitive video game called "Dota 2." It holds the record for the largest overall prize pool of all "eSports" for the top 7 spots and holds 8 out of the top 10 spots.
 ```{r, out.width="110%",fig.align="center"}
-knitr::include_graphics("C:\\repos\\DATA607\\Projects\\Project4 - 'Document' Classification\\Prize.png")
+knitr::include_graphics("https://raw.githubusercontent.com/d-ev-craig/DATA607/main/Projects/Project4%20-%20'Document'%20Classification/Prize.png")
 ```
 
 |        $40 million isn't too shabby, eh? Ignoring our dreams of playing video games to earn money, let's come back to reality and see if we can't predict a win for one of these games. Great for betting, if you're into that. Before we get into predicting a win, I'd like to go over some basics of the game.
@@ -42,7 +42,7 @@ knitr::include_graphics("C:\\repos\\DATA607\\Projects\\Project4 - 'Document' Cla
 |       For this project of classification, we are going to try and predict/classify a win using some game variables while holding one variable constant. That variable will be the hero, and in this case my favorite hero, Nature's Prophet. We won't get into the fine details but to give you an idea the hero is a heavily objective based hero that has the ability to teleport to different locations and spawn little servants that help him destroy buildings. Due to this, the hero is considered to be playing his best when taking buildings. This is important since it will have an impact of some of his game stats and what we can expect.
 |       To give you a face to the name, below are a few of Nature's Prophets spells he can cast in the game.
 ```{r, out.width="95%",fig.align="center"}
-knitr::include_graphics("C:\\repos\\DATA607\\Projects\\Project4 - 'Document' Classification\\npAbilities.gif")
+knitr::include_graphics("https://github.com/d-ev-craig/DATA607/blob/main/Projects/Project4%20-%20'Document'%20Classification/npAbilities.gif?raw=true")
 ```
 
 
