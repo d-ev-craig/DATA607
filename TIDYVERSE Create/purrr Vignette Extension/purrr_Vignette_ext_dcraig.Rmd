@@ -1,0 +1,352 @@
+---
+title: "purrr Vignette Ext dcraig"
+author: "Daniel Craig"
+date: "2023-04-27"
+output: 
+  html_document: rmdformats::readthedown
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+library(knitr)
+library(tidyverse)
+library(rmarkdown)
+library(lubridate)
+```
+
+<style type="text/css">
+  body{
+  font-size: 12pt;
+  font-family: Times New Roman;
+  line-height:2;
+}
+</style>
+
+## Recap
+
+|       Purrr has been introduced by Glen(my classmate) with some of its basic, but useful, functions that will introduce you to the package. We will be recapping his work int eh first section, if you are recently coming off of his vignette, feel free to start at the "Extension" section. It is a great starting place. The hope of this vignette is to expand and build atop of what Glen has shown us thus far. To ensure things are seamless, I've downloaded Glen's Vignette and re-ran all of his code to put the same variables into my environment. If you are viewing this document without the first, please download and run Glen's vignette first or a lot of code is going to break.
+
+|       Purrr's purpose as a package is to provide a uniform syntax and function structure to iterate commonly used or user created functions across multiple objects and elements.
+
+### When Should One Use Purrr?
+
+|       A concrete example of Purrr is applying functions to lists, even nested lists, of dataframes or other objects/elements matching the user provided criteria. Think of big bulky objects such as a nested list with 500 different dataframes that have common features. Let's say out of the 500, only 200 have the features you're interested in and want to single those out and start tweaking them. Those 500 dataframes might actually even be lists themselves with their own nested objects. Purrr is great at dealing with this scenario. If you're familiar with [dplyr](https://dplyr.tidyverse.org/), you can think of dplyr as... pliers for intricate tweaking and purrr as a robust engine pumping through material (quite possibly an inspiriation of the name from the phrase "hearing that engine purr").
+|       You may find commonalities between Purr and other packages like Base R, dplyr, or other tidyverse packages. Purrr performs a hair slower than Base R, but in exchange offers thematically and gramatically similar coding syntax and structure as compared to Base R. It also works with piping in the tidyverse. This [stackexchange post](https://stackoverflow.com/questions/45101045/why-use-purrrmap-instead-of-lapply) goes over an example of this comparing Purrr's map() and Base R's lapply() in regards to speed and also points out some differences in grammar. It's a quick skim.
+
+### Previous Purrr Commands Covered:
+
+```{r data, echo=FALSE, results =FALSE, message= FALSE}
+my_url <- "https://raw.githubusercontent.com/geedoubledee/SPRING2023TIDYVERSE/main/DisneyMoviesDataset.csv"
+disney_movies_df <- as.data.frame(read_csv(file = my_url))
+disney_movies_df <- disney_movies_df[, -1]
+
+fix_col_names <- function(s){
+    s <- gsub("[()]", "", tolower(s))
+    s <- gsub(" ", "_", s)
+    s
+}
+
+col_names <- map_chr(colnames(disney_movies_df), fix_col_names)
+colnames(disney_movies_df) <- col_names
+
+disney_movies_df <- disney_movies_df %>%
+    mutate_if(is.character, list(~na_if(., "N/A")))
+
+
+disney_movies_df$running_time_int <- map_int(disney_movies_df$running_time_int,
+                                             as.integer)
+disney_movies_df$imdb <- map_dbl(disney_movies_df$imdb, as.double)
+disney_movies_df$metascore <- map_int(disney_movies_df$metascore, as.integer)
+
+fix_percentage <- function(s){
+    s <- gsub("%", "", s)
+    s <- as.double(as.integer(s) / 100)
+    s
+}
+
+disney_movies_df$rotten_tomatoes <- map_dbl(disney_movies_df$rotten_tomatoes, fix_percentage)
+
+
+renames <- c(budget_float_in_millions = "budget_float", box_office_float_in_millions = "box_office_float")
+disney_movies_df <- rename(disney_movies_df, all_of(renames))
+disney_movies_df$budget_float_in_millions <- map_dbl(
+    disney_movies_df$budget_float_in_millions, ~ . / 1000000)
+disney_movies_df$box_office_float_in_millions <- map_dbl(
+    disney_movies_df$box_office_float_in_millions, ~ . / 1000000)
+
+
+disney_movies_df <- disney_movies_df %>%
+    mutate(release_year = lubridate::year(release_date_datetime),
+           release_decade = release_year - release_year %% 10)
+disney_movies_df
+
+by_decade <- disney_movies_df %>%
+    filter(!is.na(imdb)) %>%
+    group_nest(release_decade)
+
+imdb_hist <- function(dat){
+    ggplot(dat, aes(x = imdb)) +
+    geom_histogram(binwidth = 0.5, fill="lightblue") + 
+    xlim(0,10) + 
+    ylim(0,20) +
+    labs(x = "imdb score", y = "movie count") + 
+    theme(plot.margin = unit(c(1.5, 0.5, 0, 0), "lines"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.line = element_line(colour = "darkblue"))
+}    
+
+by_decade <- by_decade %>%
+    filter(!is.na(release_decade)) %>%
+    mutate(plot = map(data, imdb_hist))
+```
+
+1.  **map_chr():** applies a user-provided function to a user-designated object and returns a character vector
+
+|       We used this to rename some columns using a created function to remove spaces, brackets, and parenthesis.
+
+```{r map_chr}
+fix_col_names <- function(s){
+    s <- gsub("[()]", "", tolower(s))
+    s <- gsub(" ", "_", s)
+    s
+}
+
+col_names <- map_chr(colnames(disney_movies_df), fix_col_names)
+```
+
+2.  **map_dfr():** applies a user-provided function to a user-designated object and returns a data frame
+
+|       Below we applied the class function from Base R, which tells us the class of the item we pass it, using map_dfr, which will apply class to each element and return a data frame of those elements.
+
+```{r map_dfr}
+paged_table(data.frame(map_dfr(disney_movies_df, class)))
+
+```
+
+3.  **map_int():** same as the previous but returns an integer vector
+
+|       Although it's a bit redundant, since map_int automatically converts its data to integer and the dataset was already an integer vector, its a good example of the structure and shows how you can deal with potential vectors with mixed data types that should all just be integer class.
+
+```{r map_int}
+disney_movies_df$running_time_int <- map_int(disney_movies_df$running_time_int,
+                                             as.integer)
+disney_movies_df$imdb <- map_dbl(disney_movies_df$imdb, as.double)
+```
+
+map_dbl(): same as previous but returns a double vector
+
+|       The first example is the same type of work as before, but I really liked the 2nd usage of map_dbl below as it shows how much work one simple line of code can complete with purrr. In that example, we used purrr to create double vectors of the columns of interest to create a statistical summary and wrap them up in a map_dfr() to create a slick dataframe for presentation.
+
+```{r map_dbl}
+fix_percentage <- function(s){
+    s <- gsub("%", "", s)
+    s <- as.double(as.integer(s) / 100)
+    s
+}
+disney_movies_df$rotten_tomatoes <- map_dbl(disney_movies_df$rotten_tomatoes, fix_percentage)
+
+```
+
+```{r map_dbl 2, eval = FALSE}
+cols <- c("running_time_int", "budget_float_in_millions",
+          "box_office_float_in_millions", "imdb", "metascore",
+          "rotten_tomatoes")
+p1 <- map_dbl(disney_movies_df[, cols], min, na.rm = TRUE)
+p2 <- map_dbl(disney_movies_df[, cols], mean, na.rm = TRUE)
+p3 <- map_dbl(disney_movies_df[, cols], max, na.rm = TRUE)
+disney_movies_summary <- as.data.frame(map_dfr(list(p1, p2, p3),
+                                               round, digits = 6))
+```
+
+map(): apply function to each element of a list or vector and returns a list
+
+```{r Map, eval = FALSE}
+imdb_hist <- function(dat){
+    ggplot(dat, aes(x = imdb)) +
+    geom_histogram(binwidth = 0.5, fill="lightblue") + 
+    xlim(0,10) + 
+    ylim(0,20) +
+    labs(x = "imdb score", y = "movie count") + 
+    theme(plot.margin = unit(c(1.5, 0.5, 0, 0), "lines"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.line = element_line(colour = "darkblue"))
+}
+
+by_decade <- by_decade %>%
+    filter(!is.na(release_decade)) %>%
+    mutate(plot = map(data, imdb_hist))
+
+
+```
+
+## Extenstion
+
+|       Glenn gives a strong opening to purr package that illustrates the basic concept of iteration by using the map functions. From here, this vignette is going to focus on:
+
+1.  Using walk(), map2(),pmap(),imap() to work with multiple objects
+2.  Using filter commands & working with lists
+
+### The Cheatsheet
+
+|       The cheatsheet is going to be our guide here. I'd recommend pulling it up and following along from this [link](https://github.com/rstudio/cheatsheets/blob/main/purrr.pdf). If you take a look at it, it's pretty well organized. The entire first page represents similar functions and are organized by which scenarios they're used in, ie. one dataframe, a list, two lists, etc.
+|       The first portion we will highlight are shortcuts that we will be attempting to use as often as we can throughout the vignette. We are leaving this here as a referece, don't force yourself to understand the picture of shortcuts, keep moving through the vignette. As a summary, in purrr's functions we can initiate inline custom functions by using the tilda '\~' to tell the function an in-line custom function is coming, and .x, .y, or .z as placeholders that represent the actual objects we're working with. This is useful when we are performing work like adding elements from .x to .y or the like.
+
+### Working with Multiple Objects
+
+|       Purrr's focus is manipulating large objects iteratively. Let's showcase this by using some functions like:
+
+-   walk(): processes a function iteratively but returns output invisibly, useful for when you need to perform a process on an object, and then pipe it to the next function
+-   imap(): apply a function to each element, and its index (useful)
+-   map2(): same as map, but allows for processing across pairs of elements
+-   pmap(): same as map2, but allows for processing across more than two vectors
+
+#### walk():processes a function iteratively but returns output invisibly
+
+|       Walk is useful when a process needs to happen without returning its output. One specific method is a slight re-creation of Glen's work using cowplot's plot_grid. In Glen's example, he had 10 or so plots which could all fit well inside cowplot's grid. We can perform something similar with walk, but without condensing the graphs when you want to look at 2 - 3 graphs. This could be useful if you have an object with hundreds of plots, but you know you only need to see specific numbers and are piping.
+
+```{r}
+library(dplyr)
+
+plotsOfInterest <- by_decade$plot[c(2,4,8)]
+
+plotsOfInterest %>%
+  walk(print)
+
+```
+
+#### imap(): apply a function to each element and its index (useful for tracking indexes whilst changing objects)
+
+|       Let's say for instance that our Disney movies were handed to us in a tibble of dataframes by each decade, exactly like Glen's created by_decade object. Let's say we also have some contextual knowledge, for instance that Disney started to release their movies in the 1930's. In instances where this is a tremendous amount of data and we wish to perform an operation across elements and retain the knowledge of their index, imap() shines. It sounds niche, but bear with me.
+|       Glen's dataframes have a lot information in them, but maybe we want to simplify this down to grabbing names while still retaining pertinent info represented by the index. Many times objects will have their indexes be a categorical divider, in Glen's situation each index is a decade.
+|       Let's build our custom function that we want imap() to apply. For now we will only tell it to grab the "title" column from each dataframe and include its index and then tell imap we want to use this function across each element we pass it and it's indexes.
+
+```{r}
+# define a function to apply to each element of the list
+disneyImap <- function(df, i) {
+
+  df_sub <- df[, c("title","release_year","imdb")]          #grab the title column
+
+  colnames(df_sub) <- paste("Decade_", i, sep = "")   #rename the df to be its index indicator
+ 
+  return(df_sub) #return our df 
+}
+
+indexMap <- imap(by_decade$data,disneyImap)
+
+print(indexMap)
+
+```
+
+|       After viewing this result, imagine if we had a dataset for books documented since the first written story, in a historical context such as researching evolution of writing across time. That dataset would have a lot of decades/nested data frames. You could certianly handle Disney's movies by hand, but purrr's imap allows you to iterate across the elements and retain its index (decade), so that if we only wanted specific pieces inside each element, we can apply our custom function and then keep its index for contextual purposes.
+
+#### map2(): processes across pairs of elements
+
+|       We will use map2 to compare films by decade. Map2 performs analysis across lists or vectors with paired elements, so objects passed to it need to have the same dimensions. This would be great for when you are running a Matched Pairs Experiment and data is heavily nested due to pulling from an API with a heavy JSON file. Let's see if we can perform some rating comparisons on the 40s titles and the first 14 titles in the 90s. Let's use map() to set ourselves up by reducing the decade dataframes to include the IMDB score so we can compare between decade dataframes.
+
+```{r}
+
+subsetFun <- function(df) {       # pull the imdb column from the df passed
+  df_sub <- df[, c("imdb")]
+  return(df_sub)
+}
+
+disneyDecadeComparison <- map(by_decade$data, subsetFun)   #apply our function to all the df's
+
+dec90<-disneyDecadeComparison[[7]][1:14,]           #grab the first 14 title scores from the 90s
+
+titleDiff <- map2_dfc(disneyDecadeComparison[[2]],dec90, `-`) #subtract the corresponding title values between the dataframes
+print(titleDiff) #show our new df
+print(sum(titleDiff)) #show our difference
+
+```
+
+|       It looks like the first set of 90s films collectively have a higher rating by -0.7.
+
+#### pmap(): same as map2, but allows for processing across more than two objects
+
+|         What if someone had the belief that Disney's first movies in any decade received less scrutiny, and that as time progessed within 10 year blocks, the ratings grew more harsh. Under this strange theory, let's use purrr's pmap to create averages across the first movies across decades in comparison with each other. We'll drop the first decade's movies since there were only 2 made in the 30s and take the first 13 movies since there's only been 13 in 2020. We need our dimensions to be the same across our elements when we passit to pmap() or the function will break. To accomplish this we will need to use map!
+
+```{r}
+shortenFun <- function(df) {       # shorten all the columns
+  df_sub <- df[1:13,]
+  return(df_sub)
+}
+
+first13 <- map(disneyDecadeComparison[2:10], shortenFun) %>% 
+  bind_cols()
+paged_table(first13)
+```
+
+|       Above we can see how map helped us pull data out and re-bind them into the form we need. Now we can work on using pmap to generate our averages.
+
+```{r}
+avg <- pmap_dbl(first13, ~mean(..3, trim = 0)) # we set the value for the mean function to 0 here because it couldnt tell how many observations to include in its averaging due to the complicated setup. Setting it to 0 tells the mean function to include all observations.
+
+print(avg)
+```
+
+|       We can now use this vector of averages to throw it back on to our other data for a clean look.
+
+```{r}
+first13Avg <- first13 %>%
+  mutate(mean = avg) %>%
+  mutate(seqMovie = rownames(first13)) %>%
+  select(seqMovie, mean,everything())
+
+colnames(first13Avg) <- c('seqMovie','mean','40s','50s','60s','70s','80s','90s','2000s','2010s','2020s')
+
+
+paged_table(first13Avg)
+```
+
+|       We can see that the 5th movie of every decade on average had the lowest ratings. I'm sure the next burning question in all of our minds is: Is there a evidence to suggest that the 5th movie in any decade produced by Disney are worse than the others or is this just variance? Find out by taking DATA606 at CUNY to perform a hypothesis test and find out!
+
+### Filter Commands & List operations
+
+|       Purrr has a wonderful section dedicated to filtering lists and manipulating lists. Let's try using some of the critical ones here.
+
+#### keep(): selects the elements of a list that meet a criteria
+
+|       Let's say we are working with our by_decade\$data list again. This list contains dataframes organized by their release date, that is to say, each dataframe is representative of a decade in Disney's time of production. We've been tasked with filtering this so we only work with the dataframes that represent movies from the 80s forward. Let's see if we can filter our dataframes so our release_year column states 1980 or later.
+
+```{r}
+by_decade$data
+
+laterThan80 <- by_decade$data %>%
+  keep(~min(.x[["release_year"]]) >= 1980)
+
+laterThan80
+
+```
+
+#### compact(): drop empty elements
+
+|       Let's say our intern data analyst accidentally pulled the information about the Disney movies with some NA's. Earlier Glen hanlded that by filtering by NA's before grouping our movies into the list we are currently using, by_decade. In this hypothetical, let's assume we didn't create the by_decade list and realized there are some NA's in the 2000s dataframe that we need to discuss with our study director on how he wants to handle.
+
+```{r}
+laterThan80[[3]] <- NULL
+laterThan80[[3]]
+```
+
+|       For now he told us to ignore the 2000s and ask the intern about getting the original data. Just as dplyr is to dataframes, purrr is to lists. Let's prep our data and leave out the decade of 2000s by using compact() on our list to only include non-null values in our elements.
+
+```{r}
+laterThan80 %>%
+  compact(~.x)
+```
+
+#### pluck(): select an element by name or index
+
+|       We can use this to select a specific decade dataframe easily.
+
+```{r}
+pluck(laterThan80, '3')
+```
+
+## Conclusions
+
+|       Purrr is a powerful package that helps deal with large amounts of data. As a rule of thumb, think about purrr for use against lists and elements of lists, just as dplyr is for dataframes and rows in dataframes. There are some more transformative options with purrr such as modify, combine, append, and more. I highly recommend looking at these if you are working with dense lists.
