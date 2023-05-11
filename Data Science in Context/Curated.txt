@@ -1,0 +1,22 @@
+Curated:
+CMD LINE: docker run -it --name hadoop ubuntu
+
+
+apt-get update
+apt install openssh-server openssh-client -y
+apt install default-jdk default-jre -y
+java -version
+
+apt-get install wget
+wget https://downloads.apache.org/hadoop/common/stable/hadoop-3.3.5.tar.gz
+
+
+**** LEFT OFF HERE - CHECK OUT PHOENIXAP SITE ****
+
+adduser hadoop
+usermod -aG sudo hadoop
+su hadoop
+
+*SHOULD NOW BE IN HADOOP@ *
+
+apt-get update
