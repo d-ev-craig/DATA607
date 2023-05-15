@@ -16,6 +16,10 @@ library(ggplot2)
 library(gbm)
 library(ggsci)
 library(tree)
+library(mlr3) #https://mlr3book.mlr-org.com/basics.html#learners
+library(mlr3viz)
+library(mlr3learners)
+library(kknn)
 ```
 
 8.14 Update:
@@ -26,35 +30,35 @@ Make it prettier
 
 Load In Data
 ```{r}
-#data<-read_csv("_Projects\\Project3\\datasets\\NPBase.csv")
-
-#npData<-read_csv("NPBase.csv")
-#npData<- as_tibble(npData)
-#npData <- as.data.frame(npData)
-#npData$win <- as.character(npData$win)
-#recode(npData$win, Yes = "1", No = "0") did not use
-#recode(npData$win, "Yes"="TRUE", "No" = "FALSE") did not use
-
-#npData
-
-#npData$win <- npData$win %>% mutate(win = ifelse(win == "No",0,1))
-
-
-npData <- data.frame(match_id = c(1234,5678,1245),
-                      start_time = c(1657339909,1657357190,1657366555),
-                      win = c('false','false','true'),
-                      hero_id = '53',
-                      account_id = c(2345438,259803,438689),
-                      leaguename = c('Titus','Destiny','Ultras'),
-                      gold_per_min = c(569,549,654),
-                      net_worth = c(15770,15317,16985),
-                      gold = c(1140,1559,3210),
-                      kills = c(4,12,7),
-                      tower_damage = c(1245,19823,4599),
-                      duration = c(1754,1759,1829),
-                      lane = c(1,3,3),
-                      lane_role = c(1, 3,3)
-                     )
+# data<-read_csv("_Projects\\Project3\\datasets\\NPBase.csv")
+# 
+# npData<-read_csv("NPBase.csv")
+# npData<- as_tibble(npData)
+# npData <- as.data.frame(npData)
+# npData$win <- as.character(npData$win)
+# #recode(npData$win, Yes = "1", No = "0") did not use
+# #recode(npData$win, "Yes"="TRUE", "No" = "FALSE") did not use
+# 
+# npData
+# 
+# npData$win <- npData$win %>% mutate(win = ifelse(win == "No",0,1))
+# 
+# 
+# npData <- data.frame(match_id = c(1234,5678,1245),
+#                       start_time = c(1657339909,1657357190,1657366555),
+#                       win = c('false','false','true'),
+#                       hero_id = '53',
+#                       account_id = c(2345438,259803,438689),
+#                       leaguename = c('Titus','Destiny','Ultras'),
+#                       gold_per_min = c(569,549,654),
+#                       net_worth = c(15770,15317,16985),
+#                       gold = c(1140,1559,3210),
+#                       kills = c(4,12,7),
+#                       tower_damage = c(1245,19823,4599),
+#                       duration = c(1754,1759,1829),
+#                       lane = c(1,3,3),
+#                       lane_role = c(1, 3,3)
+#                      )
 
 
     npData<-read_csv("NPBase.csv")
@@ -97,18 +101,26 @@ varHist
 ```
 
 ```{r Boxplot}
-boxPlot <- ggplot(npData, aes(x=win,y=gold), fill = gold) + 
-  theme_bw() +                                                              #Set classic bw plot theme
+boxPlot <- ggplot(npData, aes(x=win,y=gold), fill = win) +  
   geom_hline(yintercept = median(npData$gold), size = 0.8) +             #Add line for overall median shares
   geom_point(size = 0.8) +                                                  #Add points
   geom_boxplot(lwd = 0.5, width = 0.5, outlier.size = 0.8, alpha = 0.7) +   #Create boxplot
   xlab("") + ylab("Amount of Gold") +                                             #Label axis
-  theme(legend.position = "none") +                                         #Remove legend
-  ggtitle(paste0("Wins vs ", varname)) +                                            #Set title
-  scale_color_startrek() + scale_fill_startrek()                            #Set color theme
+  #theme(legend.position = "none") +                                         #Remove legend
+  ggtitle(paste0("Wins vs ", varname))
 
 #Display plot
 boxPlot
+```
+```{r Scatterplot}
+  
+  ggplot(npData, aes(x = gold, y = net_worth, color = win, fill = win) ) +
+          geom_jitter() +          
+          scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          labs(title = paste0("Networth over Gold"))+
+          theme_classic()
+
 ```
 
 
@@ -239,6 +251,8 @@ keepVars <- c(keepVars, "win")
 dataModel <- dataModel[, names(dataModel) %in% keepVars]
 dataModel
 
+dataSubset <- dataModel[, names(dataModel) %in% keepVars]
+
 ```
 ```{r Partitioning}
 dataIndex <- createDataPartition(dataModel$win, p = 0.75, list = FALSE)
@@ -352,15 +366,192 @@ trControl = trainControl(method = "repeatedcv", number = 5, repeats = 3),
 tuneGrid = data.frame(mtry = sqrt(ncol(dataTrain) - 1)))
 
 trainConMat <- confusionMatrix(trainRFModel, newdata = dataTest)
-testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
+#testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
 trainConMat
-testConMat
+#testConMat
 summary(trainRFModel)
 
 predict(trainRFModel,newdata=dataTest)
 
 ```
 
+
+#Classification Using mlr3
+```{r}
+#https://mlr3book.mlr-org.com/basics.html#learners
+
+
+#npTask <- tsk("npData")
+data("npData", package = "datasets")
+str(npData)
+
+npSubset = subset(npData, select = c("win","gold_per_min","net_worth","duration"))
+
+taskNP = as_task_classif(npSubset, target = "win", id = "wins", positive = "TRUE") #We can set the variable of interest here
+
+taskNP
+
+autoplot(taskNP, type = "pairs")
+
+
+
+#Checking Elements of TaskNP
+c(taskNP$nrow, taskNP$ncol) #Get size of data object
+
+list(taskNP$feature_names, taskNP$target_names) #we can see which variables are features vs targets from our earlier as_task_clasif
+
+head(taskNP$row_ids) #Pull indexes of the task
+
+taskNP$data() #Look at data with this
+taskNP$data(rows = c(1, 3, 10), cols = "duration") #Pull specific data with this
+
+summary(as.data.table(taskNP)) #Pull everything out
+```
+# Task Mutators with mlr3
+```{r}
+taskNPSmall = taskNP$clone() # use clone method to create copy
+taskNPSmall$select(c("gold_per_min", "duration")) # keep only these features
+taskNPSmall$filter(2:4) # keep only these rows
+taskNPSmall$data()
+
+#Lets make it even smaller
+
+taskNPSmaller = taskNPSmall$clone()
+taskNPSmaller$filter(2)   #keep only the 2nd row
+taskNPSmaller$data()
+
+#Create a learner
+classifLrn <- lrn("classif.rpart")
+
+#Partition our Data (default uses 33/67)
+splits = partition(taskNP)
+splits
+
+classifLrn$train(taskNP, splits$train)
+classifLrn$model
+
+classifLrn$param_set #to view hyper parameters, current settings are stored in the value column
+
+#classifLrn$param_set$set_values(minsplit = 10) if you want to set the parameters
+
+#classifLrn = lrn("classif.rpart", minsplit =10) hyperparameters can be done at creation of learner
+
+#Predicting
+predsClass = classifLrn$predict(taskNP,splits$test)
+predsClass #truth is what actually happened, response is the prediction
+
+as.data.table(predsClass)
+
+#This learner's model can then be applied to other data
+newPreds = classifLrn$predict_newdata(npData)
+newPreds
+
+autoplot(newPreds)
+
+```
+#Evaluating Accuracy of MLR3 Model
+```{r}
+#First we create the measure
+msrAcc = msr("classif.acc")
+msrAUC = msr("classif.auc")
+msrFP = msr("classif.fp")
+msrFPR = msr("classif.fpr")
+msrFN = msr("classif.fn")
+msrFNR = msr("classif.fnr")
+measures = c(msrAcc,msrAUC,msrFP,msrFPR,msrFN,msrFNR)
+
+predsClass$score(measures)
+predsClass$confusion
+```
+
+#Thresholding
+Can adjust the threshold of log odds at which it would be predicted as a win as below. Recall that if the log odds are above .5, it will be predicted a win. Sometimes you may want to adjust this for accruacy.
+```{r}
+predsClass$set_threshold(0.7)
+predsClass$confusion
+```
+
+
+#kNN
+```{r}
+
+npSubset = subset(npData, select = c("win","gold_per_min","net_worth","duration"))
+
+taskNP = as_task_classif(npSubset, target = "win", id = "wins", positive = "TRUE")
+
+classifLrn <- lrn("classif.rpart")
+
+#Partition our Data (default uses 33/67)
+splits = partition(taskNP)
+splits
+
+classifLrn$train(taskNP, splits$train)
+classifLrn$model
+
+#Predicting data on our testing split
+predsClass = classifLrn$predict(taskNP,splits$test)
+predsClass
+
+
+msrAcc = msr("classif.acc")
+msrAUC = msr("classif.auc")
+msrFP = msr("classif.fp")
+msrFPR = msr("classif.fpr")
+msrFN = msr("classif.fn")
+msrFNR = msr("classif.fnr")
+measures = c(msrAcc,msrAUC,msrFP,msrFPR,msrFN,msrFNR)
+
+predsClass$score(measures)
+predsClass$confusion
+
+#######
+
+knnLrn <- lrn("classif.kknn")
+
+taskNPKnn = as_task_classif(npSubset, target = "win", id = "wins", positive = "TRUE", backend =npSubset)
+
+splitsKNN = partition(taskNPKnn)
+
+knnLrn$train(taskNPKnn, splitsKNN$train)
+knnLrn$model
+knnPreds <- knnLrn$predict(taskNPKnn,splits$test)
+
+#Measuring Accuracy
+confMat <- knnPreds$confusion
+confMat
+
+#Creating the measures
+msrAcc = msr("classif.acc")
+msrFPR = msr("classif.fpr")
+msrFNR = msr("classif.fnr")
+measures = c(msrAcc,msrFPR,msrFNR)
+
+knnPreds$score(measures)
+
+```
+
+#kNN Caret
+```{r}
+knnNP <- train(win ~ ., data = dataTrain, method = "knn", 
+               trControl = trainControl(method = "cv", number = 10),
+               tuneGrid = expand.grid(k = 1:10)
+)
+
+knnPreds <- predict(knnNP, newdata = dataTest)
+
+knnAcc <- confusionMatrix(knnPreds, dataTest$win)
+knnAcc$table
+```
+kNN Caret F1
+```{r}
+truePositives <- knnAcc$table[2, 2]
+falsePositives <- knnAcc$table[2, 1]
+falseNegatives <- knnAcc$table[1, 2]
+
+precision <- truePositives / (truePositives + falsePositives)
+recall <- truePositives / (truePositives + falseNegatives)
+F1_score <- 2 * (precision * recall) / (precision + recall)
+```
 
 
 # Prediction Page Using the GLM

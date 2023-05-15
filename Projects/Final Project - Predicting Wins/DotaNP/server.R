@@ -21,6 +21,10 @@ library(DT)
 library(knitr)
 library(tree)
 library(mathjaxr)
+library(mlr3)
+library(mlr3viz)
+library(mlr3learners)
+library(kknn)
 
 
 #Leave off notes:
@@ -45,7 +49,6 @@ library(mathjaxr)
 # - Check accuracy measures
 # - F1 Score
 # - AUC
-
 
 # getData() & Clean
 shinyServer(function(input, output,session) {
@@ -90,54 +93,58 @@ shinyServer(function(input, output,session) {
   
 ## Numerical Summaries
     
-### Sets user's chosen variables from the UI to variable 'ghettoData' for Plotting ONLY, not modeling!
-  ghettoData <- reactive ({
-    var <- input$pred
-  })
 
-### Sets user's chosen plot type from the UI to variable 'plotInput'
-  plotInput <- reactive ({
-    plotType <- input$plotType
-  })
   
 ### Create plot and pass to output in ui file called histPlot
 
-    # output$histPlot<- renderPlot({
-    #   npData <- getData()
-    #   var <- ghettoData()
-    #   plotType <- plotInput()
-    # 
-    # 
-    #   varHist <- ggplot(npData, aes(x = var, color = win, fill = win))
-    #   
-    #   if (plotType == 'Histogram'){
-    # 
-    #     varHist + geom_histogram(aes_string(x=var),alpha = .5, position = "identity")+
-    #       scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
-    #       scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
-    #       #geom_vline(aes(xintercept=mean(input$pred)), linetype = "dashed", size = 1)+
-    #       labs(x = paste0("Amount of ",var), y ="Count of Matches", title = paste0("Matches vs ", var))+
-    #       theme_classic()
-    #   }
-    #   
-    #   else if (plotType == 'Boxplot'){
-    #     varHist <- ggplot(npData, aes_string(y = var, x = win, color = win, fill = win) )
-    #     #boxPlot <- ggplot(npData, aes(x=win,y=gold), fill = gold) +
-    #     varHist +                                                              #Set classic bw plot theme
-    #       #geom_hline(yintercept = median(npData$gold), size = 0.8) +             #Add line for overall median shares
-    #       #geom_point(size = 0.8) +                                                  #Add points
-    #       geom_boxplot(lwd = 0.5, width = 0.5, outlier.size = 2.0, alpha = 0.7) +   #Create boxplot
-    #       xlab("Did Nature's Prophet win?") + ylab(paste0("Amount of ", var)) +
-    #       ggtitle(paste0("Distribution of ",var," across Wins")) +                                            #Set title
-    #       scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
-    #       scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))                            #Set color theme
-    #   }
-    #   
-    #   else if (plotType == 'Scatterplot'){
-    #     
-    #     
-    #   }
+    output$histPlot<- renderPlot({
+      npData <- getData()
+      win <- npData$win
+      var <- input$pred
+      var2 <- input$var
+      plotType <- input$plotType
+
+
+      varHist <- ggplot(npData, aes(x = var, color = win, fill = win))
+
+      if (plotType == 'Histogram'){
+        varHist + geom_histogram(aes_string(x=var),alpha = .5, position = "identity")+
+          scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          #geom_vline(aes(xintercept=mean(input$pred)), linetype = "dashed", size = 1)+
+          labs(x = paste0("Amount of ",var), y ="Count of Matches", title = paste0("Matches vs ", var))+
+          theme_classic()
+        }
+      else if (plotType == 'Boxplot'){
+        varHist <- ggplot(npData, aes_string(y = var, x = win, color = win), fill = win)
+        varHist +                                                              #Set classic bw plot theme
+          #geom_hline(yintercept = median(var), size = 0.8) +             #Add line for overall median shares
+          geom_point(size = 0.8) +                                                  #Add points
+          geom_boxplot(lwd = 0.5, width = 0.5, outlier.size = 0.8, alpha = 0.7) +   #Create boxplot
+          xlab("Did Nature's Prophet win?") + ylab(var) +
+          ggtitle(paste0("Boxplot of ",var," across Wins")) +                                            #Set title
+          scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))                            #Set color theme
+        }
+      else if (plotType == 'Scatterplot'){
+        varHist <- ggplot(npData, aes_string(x = var, y = var2, color = win), fill = win)
+        varHist +
+          geom_jitter() +          
+          scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+          xlab(var)+
+          ylab(var2)+
+          ggtitle(paste0(var,"over",var2))+
+          theme_classic()
+      }
       
+      # ggplot(npData, aes(x = gold, y = net_worth, color = win, fill = win) ) +
+      #   geom_jitter() +          
+      #   scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+      #   scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+      #   labs(title = paste0("Networth over Gold"))
+})
+
 #       if (var == 'gold'){
 #       varHist <- ggplot(npData, aes(x = gold, color = win, fill = win))
 #         if (plotType == 'Boxplot'){
@@ -186,9 +193,9 @@ shinyServer(function(input, output,session) {
 #           varHist <- ggplot(npData, aes(y = lane_role, x = win, color = win, fill = win) )
 #         }
 #       }
-#       
+#
 # if (plotType == 'Histogram'){
-#    
+#
 #       varHist + geom_histogram(aes(y=..count..),alpha = .5, position = "identity")+
 #         scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
 #         scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
@@ -201,7 +208,11 @@ shinyServer(function(input, output,session) {
 
 
 
-##### Modeling area
+####### ----------------------- Data Prep -----------------------
+
+  
+dataPrepVals <- reactiveValues(dataTrain = NULL, dataTest = NULL)
+dataModelVals <- reactiveValues(classTreeFit = NULL)
 
 getTrainSetSize <- reactive({         #Variable to call training set size from UI
     trainSetSize <- input$train
@@ -221,7 +232,7 @@ output$modelPreds <- renderText({
   modelPreds
 })
     
-getDataModel<- eventReactive (input$modelButton,{    #When user clicks the model button
+getDataModel<- eventReactive (input$prepButton,{    #When user clicks the model button
   keepVars <- getModelPreds()
   keepVars <- c(keepVars, "win")
   
@@ -233,6 +244,14 @@ output$dataModel <- renderDataTable({
   dataModel <- getDataModel()
   dataModel
 })
+output$downloadSubset <- downloadHandler(
+  filename = "dataSubset.csv",
+  content = function(file) {
+    write.csv(getDataModel(), file, row.names = FALSE)
+  }
+)
+
+
 
 dataIndex <- reactive({        # Create our index for training from getDataModel()
 dataModel<-getDataModel()
@@ -251,38 +270,58 @@ dataTrain <- reactive({        #Set our training data to a variable
   dataIndex <- dataIndex()
   
   dataTrain <- dataModel[dataIndex, ]
+  dataPrepVals$dataTrain <- dataTrain     #Store in reactive values
   dataTrain
 })
 output$dataTrain <- renderDataTable({
   dataTrain <- dataTrain()
   dataTrain
 })
+output$downloadTrain <- downloadHandler(
+  filename = "dataTrain.csv",
+  content = function(file) {
+    write.csv(dataTrain(), file, row.names = FALSE)
+  }
+)
 
 
 dataTest <- reactive({          #Set our testing data to a variable
   dataModel <- getDataModel()
   dataIndex <- dataIndex()
   dataTest <- dataModel[-dataIndex, ]
+  dataPrepVals$dataTest <- dataTest        #Store in reactive values
   dataTest
 })
 output$dataTest <- renderDataTable({
   dataTest <- dataTest()
   dataTest
 })
+output$downloadTest <- downloadHandler(
+  filename = "dataTest.csv",
+  content = function(file) {
+    write.csv(dataTest(), file, row.names = FALSE)
+  }
+)
 
-# glmModel <- eventReactive(input$modelButton,{
-# ##Math Jax
-#   output$ex2 <- renderUI ({
-#     withMathJax(helpText('$$log((Psuccess|networth)/1-P(success/networth)) = \beta_0 + \beta_1*networth$$'))
-#   })
 
-## Logistic Reg ------------------------------------------------
-# dataTrain <- dataTrain()
-# glmFit <- train(win ~ ., data = dataTrain,
-#                 method = "glm",
-#                 family = "binomial",
-#                 preProcess = c("center", "scale"),
-#                 trControl = trainControl(method = "cv", number = 10))
+
+##### ------------------------- Modeling area ----------------------------
+
+######### ------------------ Logistic Reg ------------------------------------------------
+
+
+glmModel <- eventReactive(input$modelButton,{
+##Math Jax
+  output$ex2 <- renderUI ({
+    withMathJax(helpText('$$log((Psuccess|networth)/1-P(success/networth)) = \beta_0 + \beta_1*networth$$'))
+  })
+
+dataTrain <- dataTrain()
+glmFit <- train(win ~ ., data = dataTrain,
+                method = "glm",
+                family = "binomial",
+                preProcess = c("center", "scale"),
+                trControl = trainControl(method = "cv", number = 10))
 
 
   # predictions <- predict(glmFit, dataTrain)
@@ -294,19 +333,18 @@ output$dataTest <- renderDataTable({
   # predictions
   # devia
   # coef
+})
 
-# })
-
-#output$confusMatr<-renderPrint({
-#   glmFit <- glmModel()
-#   dataTest <- dataTest()
-#   confusMatr<-confusionMatrix(data = dataTest$win, reference = predict(glmFit, newdata = dataTest))
-#   confusMatr
-# })
-#output$sum <- renderPrint({
-#   models <- glmModel()
-#   summary(models)
-# })
+output$confusMatr<-renderPrint({
+  glmFit <- glmModel()
+  dataTest <- dataTest()
+  confusMatr<-confusionMatrix(data = dataTest$win, reference = predict(glmFit, newdata = dataTest))
+  confusMatr
+})
+output$sum <- renderPrint({
+  models <- glmModel()
+  summary(models)
+})
 
 
 
@@ -314,9 +352,10 @@ output$dataTest <- renderDataTable({
 
 ##Unpruned Classification Tree
 
-classTree <- reactive({    # Create out model
-  trainSet <- dataTrain()
-  classTreeFit <- tree(win ~ ., data = trainSet)
+classTree <- eventReactive(input$modelButton,{    # Create out model
+  classTreeFit <- tree(win ~ ., data = dataPrepVals$dataTrain)
+  dataModelVals$classTreeFit <- classTreeFit
+  globalTreeFit <<- classTreeFit
   classTreeFit
 })
 output$classTreeSumm <-renderPrint({      #Output summary of model
@@ -326,56 +365,66 @@ output$classTreeSumm <-renderPrint({      #Output summary of model
 })
 
 #Using Model from Full Tree on Test Data
-#fullPred <- eventReactive( input$modelButton, {
-#   classTreeFit<- classTree()
-#   dataTest <- dataTest()
-#   
-#   fullPred <- predict(classTreeFit, dplyr::select(dataTest, -"win"), type = "class")
-# })
+fullPred <- eventReactive( input$modelButton, {
+  classTreeFit<- dataModelVals$classTreeFit
+  dataTest <- dataPrepVals$dataTest
+
+  fullPred <- predict(classTreeFit, dplyr::select(dataTest, -"win"), type = "class")
+})
 
 #Creating Confusion Matrix with Prediction-TestData results
-# fullTreeCM <- reactive({
-#   
-#   fullPred <- fullPred()
-#   dataTest <- dataTest()
-#   cm <- confusionMatrix(fullPred,dataTest$win)
-#   
-#   cmFull <- cm$table
-#   cmFull
-#   
-# })
-# output$fullTreeCM <- renderPrint({   #Outputting table
-#   table <- fullTreeCM()
-#   
-#   table
-# })
-# fullTreeAcc <- reactive({         #Creating Confusion Matrix to Output Accuracy
-#   fullPred <- fullPred()
-#   dataTest <- dataTest()
-#   cm <- confusionMatrix(fullPred,dataTest$win)
-#   
-#   cmAcc <- cm$overall[1]
-# })
-# output$fullTreeAcc <- renderText({ #Outputting accuracy
-#   text <- fullTreeAcc()
-#   text
-# })
+fullTreeCM <- reactive({
+
+  fullPred <- fullPred()
+  dataTest <- dataTest()
+  cm <- confusionMatrix(fullPred,dataTest$win)
+
+  cmFull <- cm$table
+  cmFull
+
+})
+output$fullTreeCM <- renderPrint({   #Outputting table
+  table <- fullTreeCM()
+
+  table
+})
+#Creating Confusion Matrix to Output Accuracy
+fullTreeAcc <- reactive({         
+  fullPred <- fullPred()
+  dataTest <- dataTest()
+  cm <- confusionMatrix(fullPred,dataTest$win)
+
+  cmAcc <- cm$overall[1]
+})
+output$fullTreeAcc <- renderText({ #Outputting accuracy
+  text <- fullTreeAcc()
+  text
+})
 
 
 #####                        Pruning Section                          ########
 
 
-##Prune Tree Fitting---------------------------------------------------------------------------
+## -------------------   Prune Tree Fitting -------------------------------#######
 
-pruneTree <-reactive({    #Creating the pruned model
-  classTreeFit <- classTree()
-  pruneFit <- cv.tree(classTreeFit, FUN = prune.misclass)
-  pruneFit
+### ALWAYS GET A CANT FIND OBJECT FROM pruneTree. It will call cv.tree into model.frame.tree 
+### into model.frame.default, into is.data.frame and state "object 'dataPrepVals' not found
+
+pruneProgression <-eventReactive(input$modelButton,{     #Create the progression of nodes to show viewers how pruning works
+  pruneFit<- pruneTree()
+  #Ordering things so that the best value is always in the first slot of dfPruneFit$size
+  dfPruneFit <- cbind(size=pruneFit$size,dev=pruneFit$dev)
+  dfPruneFit <- data.frame(dfPruneFit)
+  dfPruneFit <- dfPruneFit %>% group_by(size)%>%arrange(size)%>%arrange(dev)
+  dfPruneFit
 })
-
+output$pruneProg <- renderDataTable({ #Output progression of the tree fit
+  pruneProg <- pruneProgression()
+  pruneProg
+})
 pruneStats <-reactive({                           #Generate best pruned model
   pruneFit<- pruneTree()
-  #classTreeFit<-classTree()
+  classTreeFit<-classTree()
   #pruneFit
   
   #Ordering things so that the best value is always in the first slot of dfPruneFit$size
@@ -388,23 +437,15 @@ pruneStats <-reactive({                           #Generate best pruned model
   
   pruneFitFinal <- prune.misclass(classTreeFit, best = bestVal)
   pruneFitFinal
-  #prunePred <- predict(pruneFitFinal, dplyr::select(dataTest, -"win"), type = "class")
+  prunePred <- predict(pruneFitFinal, dplyr::select(dataTest, -"win"), type = "class")
 })
 
-
-pruneProgression <-reactive({     #Create the progression of nodes to show viewers how pruning works
-  pruneFit<- pruneTree()
-  #Ordering things so that the best value is always in the first slot of dfPruneFit$size
-  dfPruneFit <- cbind(size=pruneFit$size,dev=pruneFit$dev)
-  dfPruneFit <- data.frame(dfPruneFit)
-  dfPruneFit <- dfPruneFit %>% group_by(size)%>%arrange(size)%>%arrange(dev)
-  dfPruneFit
+pruneTree <-reactive({    #Creating the pruned model
+  req(dataPrepVals$dataTrain)
+  unPruneFit <-tree(win ~ ., data = dataPrepVals$dataTrain)
+  pruneFit <- cv.tree(unPruneFit, FUN = prune.misclass)
+  pruneFit
 })
-output$pruneProg <- renderDataTable({ #Output progression of the tree fit
-  pruneProg <- pruneProgression()
-  pruneProg
-})
-
 
 ## Testing the Pruned Model ----------------------------------------------------------
 
@@ -466,151 +507,181 @@ output$pruneProg <- renderDataTable({ #Output progression of the tree fit
 
 
 
-##------------------------------- Random Forest
-# 
-# rfModel <- eventReactive(input$modelButton,{
-#     dataModel <- getDataModel()
-#     trainSetSize<- getTrainSetSize()
-#     dataTrain <- dataTrain()
-#   
-# trainRFModel <- train(win ~ ., data = dataTrain,
-#                       method = "rf",
-#                       trControl = trainControl(method = "repeatedcv", number = 5, repeats = 3),
-#                       tuneGrid = data.frame(mtry = sqrt(ncol(dataTrain) - 1)))
-# #trainConMat <- confusionMatrix(trainRFModel, newdata = dataTest)
-# #testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
-# trainRFModel
-# })
-# 
-# output$rfStats <- renderPrint({
-#   rfModel <- rfModel()
-#   summary(rfModel)
-# })
-# 
-# output$rfConfMat <- renderPrint({
-#   trainRFModel<- rfModel()
-#   dataTest <- dataTest()
-#   
-#   trainConMat <- confusionMatrix(trainRFModel, newdata = dataTest)
-#   #testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
-#   #testConMat
-#   trainConMat
-# })
-# 
-# output$rfTestConfMat <- renderPrint({
-#   trainRFModel<- rfModel()
-#   dataTest <- dataTest()
-#   
-#   testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
-#   testConMat
-# })
-# 
+##------------------------------- Random Forest ---------------------------#####
+ 
+rfModel <- eventReactive(input$modelButton,{
+    dataModel <- getDataModel()
+    trainSetSize<- getTrainSetSize()
+    dataTrain <- dataTrain()
+
+trainRFModel <- train(win ~ ., data = dataTrain,
+                      method = "rf",
+                      trControl = trainControl(method = "repeatedcv", number = 5, repeats = 3),
+                      tuneGrid = data.frame(mtry = sqrt(ncol(dataTrain) - 1)))
+#trainConMat <- confusionMatrix(trainRFModel, newdata = dataTest)
+#testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
+trainRFModel
+})
+
+output$rfStats <- renderPrint({
+  rfModel <- rfModel()
+  summary(rfModel)
+})
+
+output$rfConfMat <- renderPrint({
+  trainRFModel<- rfModel()
+  dataTest <- dataTest()
+
+  trainConMat <- confusionMatrix(trainRFModel, newdata = dataTest)
+  #testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
+  #testConMat
+  trainConMat
+})
+
+output$rfTestConfMat <- renderPrint({
+  trainRFModel<- rfModel()
+  dataTest <- dataTest()
+
+  testConMat <- confusionMatrix(data = dataTest$win, reference = predict(trainRFModel, newdata = dataTest))
+  testConMat
+})
+
 # fullPreds <- eventReactive(input$modelButton,{
 # 
-#   
+# 
 #   fullPred <- predict(classTreeFit, dplyr::select(dataTest, -"win"), type = "class")
-#   
-#   
 # })
-# 
-# 
-# ## Predictions
-# 
-# #Grab User Inputs
-# userNetworth<-reactive({ userNetworth <- input$userNetworth})
-# userGPM <- reactive ({ userGPM <- input$userGPM})
-# userGold<- reactive ({userGold<-input$userGold})
-# userKills<- reactive ({userKills<-input$userKills})
-# userTD<- reactive ({userTD<-input$userTD})
-# userDuration <- reactive ({userDuration<-input$userDuration})
-# userLane <- reactive ({userLane<-input$userLane})
-# userLaneRole <- reactive ({userLaneRole<-input$userLaneRole})
-# 
-# 
-# #Upon button press, execute predict function
-# prediction <- eventReactive(input$predictionButton,{
-#   
-#   #Pass in our trained model from earlier
-#   trainRFModel <- rfModel()
-#   #Pass in our selected vars
-#   charvec<-getModelPreds()
-#   
-# #Pass in user vars
-#   userNetworth <- userNetworth()
-#   userGPM <- userGPM()
-#   userGold <- userGold()
-#   userKills <- userKills()
-#   userTD <- userTD()
-#   userDuration <- userDuration()
-#   userLane <- userLane()
-#   userLaneRole <- userLaneRole()
-# 
-# #Build a dataframe out of values
-#   userPredVals <- data.frame("gold"=userGold,"gold_per_min"=userGPM,"kills"=userKills,"tower_damage"=userTD,
-#              "duration"=userDuration,"lane"=userLane,"lane_role"=userLaneRole,"net_worth"=userNetworth)
-#   
-#   userPredVals$lane <- as.factor(userPredVals$lane)
-#   userPredVals$lane_role <- as.factor(userPredVals$lane_role)
-#   
-#   gold      <- "gold"       %in% charvec
-#   gold_per_min    <- "gold_per_min"     %in% charvec
-#   kills <- "kills"  %in% charvec
-#   tower_damage <- "tower_damage" %in% charvec
-#   duration <- "duration" %in% charvec
-#   lane <- "lane" %in% charvec
-#   lane_role <- "lane_role" %in% charvec
-#   net_worth <- "net_worth" %in% charvec
-#   
-#   if (!(gold)){
-#     userPredVals<- userPredVals %>% select(-gold) 
-#   }
-#   if (!(gold_per_min)){
-#     userPredVals<- userPredVals %>% select(-gold_per_min) 
-#   }
-#   if (!(net_worth)){
-#     userPredVals<- userPredVals %>% select(-net_worth) 
-#   }
-#   if (!(kills)){
-#     userPredVals<- userPredVals %>% select(-kills) 
-#   }
-#   if (!(tower_damage)){
-#     userPredVals<- userPredVals %>% select(-tower_damage) 
-#   }
-#   if (!(duration)){
-#     userPredVals<- userPredVals %>% select(-duration) 
-#   }
-#   if (!(lane)){
-#     userPredVals<- userPredVals %>% select(-lane) 
-#   }
-#   if (!(lane_role)){
-#     userPredVals<- userPredVals %>% select(-lane_role) 
-#   }
-#     
-# 
-# 
-#   
-#   #Predict
-#   prediction <- predict(trainRFModel, newdata = userPredVals)
-#   prediction
-# })
-# 
-# #render our prediction
-# 
-# output$userPrediction<- renderPrint({
-#   prediction<-prediction()
-#   prediction
-#   
-# })
-# 
-# 
-# #Next steps,
-# # 1. Figure out the predictions error on Modeling page
-# # 2. Input all the other models
-# # 3. Render the summary stats
-# # 4. Ensure training set size user input
-# # Frequency table/Set of Box plots/Contingency Table
-# # Continuous Variables Scatterplots
-# 
+
+## ----------------------- kNN Caret ---------------------------##
+
+knnNP <- eventReactive(input$modelButton, {
+  
+  dataTrain <- dataTrain()
+  dataTest <- dataTest()
+  
+  knn <- train(win ~ ., data = dataTrain, method = "knn", 
+        trControl = trainControl(method = "cv", number = 10),
+        tuneGrid = expand.grid(k = 1:10)
+        )
+
+  knnPreds <- predict(knn, newdata = dataTest)
+  
+  knnAcc <- confusionMatrix(knnPreds, dataTest$win)
+  
+  knnAcc
+})
+
+output$knnConfMat <- renderPrint({
+  confMat <- knnNP()
+  confMat
+})
+output$knnF1 <- renderPrint({
+  knnAcc <- knnNP()
+  truePositives <- knnAcc$table[2, 2]
+  falsePositives <- knnAcc$table[2, 1]
+  falseNegatives <- knnAcc$table[1, 2]
+  
+  precision <- truePositives / (truePositives + falsePositives)
+  recall <- truePositives / (truePositives + falseNegatives)
+  F1score <- 2 * (precision * recall) / (precision + recall)
+  
+  paste0("The kNN model's F1 Score is ",F1score)
+  
+})
+
+
+
+
+## ----------------------- Predictions ------------------------##
+
+#Upon button press, execute predict function
+prediction <- eventReactive(input$predictionButton,{
+
+  userNetworth<-reactive({ userNetworth <- input$userNetworth})
+  userGPM <- reactive ({ userGPM <- input$userGPM})
+  userGold<- reactive ({userGold<-input$userGold})
+  userKills<- reactive ({userKills<-input$userKills})
+  userTD<- reactive ({userTD<-input$userTD})
+  userDuration <- reactive ({userDuration<-input$userDuration})
+  userLane <- reactive ({userLane<-input$userLane})
+  userLaneRole <- reactive ({userLaneRole<-input$userLaneRole})
+  
+  #Pass in our trained model from earlier
+  trainRFModel <- rfModel()
+  #Pass in our selected vars
+  charvec<-getModelPreds()
+
+#Pass in user vars
+  userNetworth <- userNetworth()
+  userGPM <- userGPM()
+  userGold <- userGold()
+  userKills <- userKills()
+  userTD <- userTD()
+  userDuration <- userDuration()
+  userLane <- userLane()
+  userLaneRole <- userLaneRole()
+
+#Build a dataframe out of values
+  userPredVals <- data.frame("gold"=userGold,"gold_per_min"=userGPM,"kills"=userKills,"tower_damage"=userTD,
+             "duration"=userDuration,"lane"=userLane,"lane_role"=userLaneRole,"net_worth"=userNetworth)
+
+  userPredVals$lane <- as.factor(userPredVals$lane)
+  userPredVals$lane_role <- as.factor(userPredVals$lane_role)
+
+  gold      <- "gold"       %in% charvec
+  gold_per_min    <- "gold_per_min"     %in% charvec
+  kills <- "kills"  %in% charvec
+  tower_damage <- "tower_damage" %in% charvec
+  duration <- "duration" %in% charvec
+  lane <- "lane" %in% charvec
+  lane_role <- "lane_role" %in% charvec
+  net_worth <- "net_worth" %in% charvec
+
+  if (!(gold)){
+    userPredVals<- userPredVals %>% select(-gold)
+  }
+  if (!(gold_per_min)){
+    userPredVals<- userPredVals %>% select(-gold_per_min)
+  }
+  if (!(net_worth)){
+    userPredVals<- userPredVals %>% select(-net_worth)
+  }
+  if (!(kills)){
+    userPredVals<- userPredVals %>% select(-kills)
+  }
+  if (!(tower_damage)){
+    userPredVals<- userPredVals %>% select(-tower_damage)
+  }
+  if (!(duration)){
+    userPredVals<- userPredVals %>% select(-duration)
+  }
+  if (!(lane)){
+    userPredVals<- userPredVals %>% select(-lane)
+  }
+  if (!(lane_role)){
+    userPredVals<- userPredVals %>% select(-lane_role)
+  }
+
+  #Predict
+  prediction <- predict(trainRFModel, newdata = userPredVals)
+  prediction
+})
+#render our prediction
+output$userPrediction<- renderPrint({
+  prediction<-prediction()
+  prediction
+
+})
+
+
+#Next steps,
+# 1. Figure out the predictions error on Modeling page
+# 2. Input all the other models
+# 3. Render the summary stats
+# 4. Ensure training set size user input
+# Frequency table/Set of Box plots/Contingency Table
+# Continuous Variables Scatterplots
+
 # 
 # #Datatable Output
 # 
@@ -630,12 +701,7 @@ output$pruneProg <- renderDataTable({ #Output progression of the tree fit
 #   })
 #   
 #   # Downloadable csv of selected dataset ----
-#   output$downloadData <- downloadHandler(
-#     filename = "yourData.csv",
-#     content = function(file) {
-#       write.csv(dataTrain(), file, row.names = FALSE)
-#     }
-#   )
+
 # 
 # 
 # 
@@ -651,6 +717,77 @@ output$pruneProg <- renderDataTable({ #Output progression of the tree fit
 #   predictions
 # })
  })
+
+
+
+## ------------------------------ KNN MLR3 ------------------------------- ##
+
 # 
+# knnPreds <- eventReactive(input$modelButton,{
+#   taskNP <- taskNPKnn()
+#   splits <- splitTrain()
+#   knnPreds <- knnLrn$predict(taskNPKnn,splits$test)
+#   knnPreds$confusion
+#   
+# })
+# output$knnPredsConfMat <- renderPrint({
+#   knnPreds()
+#   # msrAcc = msr("classif.acc")
+#   # msrFPR = msr("classif.fpr")
+#   # msrFNR = msr("classif.fnr")
+#   # measures = c(msrAcc,msrFPR,msrFNR)
+#   
+# })
+# taskNPKnn <- reactive({
+#   dataModel <- getDataModel()
+#   taskNPKnn <- as_task_classif(npSubset, target = "win", id = "wins", positive = "TRUE")
+#   taskNPKnn
+# })
+# splitTrain <- reactive({
+#   knnLrn <- lrn("classif.kknn") #Create learner
+#   taskNPKnn <- taskNPKnn() #Pull in our task(think dataset)
+#   partition(taskNPKnn) #Partition the dataset
+#   knnLrn$train(taskNPKnn, splitsKNN$train) #Train
+#   knnLrn
+#   
+# })
+# 
+# 
+# # knnLrn <- reactive({
+# #   lrn("classif.kknn")
+# # })
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# taskNPKnn = as_task_classif(npSubset, target = "win", id = "wins", positive = "TRUE", backend =npSubset)
+# 
+# splitsKNN = partition(taskNPKnn)
+# 
+# knnLrn$train(taskNPKnn, splitsKNN$train)
+# knnLrn$model
+# 
+# 
+# 
+# 
+# #Measuring Accuracy
+# knnPreds$confusion
+# 
+# #Creating the measures
+# msrAcc = msr("classif.acc")
+# msrFPR = msr("classif.fpr")
+# msrFNR = msr("classif.fnr")
+# measures = c(msrAcc,msrFPR,msrFNR)
+# 
+# knnPreds$score(measures)
+# 
+
+
+
+
+
 # 
 #     

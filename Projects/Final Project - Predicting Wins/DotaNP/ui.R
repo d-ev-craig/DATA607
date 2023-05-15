@@ -12,6 +12,7 @@ library(DT)
 library(caret)
 library(knitr)
 library(mathjaxr)
+options(shiny.reactlog = TRUE)
 # Define UI for application that draws a histogram
 
 
@@ -24,18 +25,29 @@ shinyUI(fluidPage(
   # Sidebar with options for the data set
   sidebarLayout(
     sidebarPanel(
-      h3("EDA Page Options:"),
+      h3("Plot Options:"),
+      selectInput("plotType","Pick Plot Type", selected = "Histogram", choices = c("Histogram","Boxplot","Scatterplot")),
       selectInput("pred", "Pick Variable of Interest", selected = "gold", choices = c("gold_per_min",
                                                                 "net_worth",
                                                                 "gold",
                                                                 "kills",
                                                                 "tower_damage",
-                                                                "duration",
-                                                                "lane",
-                                                                "lane_role")),
-      #selectInput("plotType","Pick Plot Type", selected = "Histogram", choices = c("Histogram","Boxplot","Scatterplot")),
+                                                                "duration"
+                                                                )
+                  ),
+      conditionalPanel(
+        condition = "input.plotType == 'Scatterplot'",
+                       selectInput("var", "Pick Variable #2 of Interest", selected = "net_worth", choices = c("gold_per_min",
+                                                                                                         "net_worth",
+                                                                                                         "gold",
+                                                                                                         "kills",
+                                                                                                         "tower_damage",
+                                                                                                         "duration"
+                                                                                                         )
+                                   ),
+      ),
       br(),
-      h3("Modeling Page Options:"),
+      h3("Modeling Options:"),
       sliderInput("train", "Choose Training Data Size",
                   min = .2, max = .8, value = .3, step = .1),
       checkboxGroupInput("preds","Choose Predictors", selected = "net_worth",choices = list("gold_per_min",
@@ -45,8 +57,15 @@ shinyUI(fluidPage(
                                                                "tower_damage",
                                                                "duration",
                                                                "lane",
-                                                               "lane_role")),
+                                                               "lane_role"
+                                                               )
+                         ),
+      strong("Model Buttons"),
+      br(),
+      actionButton("prepButton","Partition Data"),
+      br(),
       actionButton("modelButton","Train Models"),
+      br(),
       actionButton("predictionButton","Make a prediction")
       #checkboxInput("conservation", h4("Color Code Conservation Status", style = "color:red;")),
       
@@ -59,6 +78,25 @@ shinyUI(fluidPage(
                  div(tags$img(src = "dotaLogo.jfif",height = '200px', weidth = '200px', deleteFile = FALSE),style="text-align: center;"),
                  h2("Dota 2: Predicting Wins with Nature's Prophet"),
                  br(),
+                 h3("Instructions"),
+                 strong("1. Explore the variables you're interested in by using the plot options to on the left to generate a plot on the plot tab."),
+                 br(),
+                 br(),
+                 strong("2. Pick the variables you'd like to base a model on with the modeling tab options."),
+                 br(),
+                 br(),
+                 strong("3. Choose your training set size, view your settings on the Dataset tab, and download the partitioned dataset if you like. When you're satisfied with you're settings, click the Partition Data button."),
+                 br(),
+                 br(),
+                 strong("4. Click the Train Models Button to train and output results of models on the Modeling page."),
+                 br(),
+                 br(),
+                 strong("5. Move to the Predictions tab and enter some of your own values you'd like to use in prediction. These predictions will be using the Random Forest model."),
+                 br(),
+                 br(),
+                 strong("6. Click the Predict button on the left and see if you'd win the game or not."),
+                 br(),
+                 br(),
                  h3("Exposition"),
                  p("This work will be using a dataset about a specific professional eSport called Dota 2, a rapidly growing business. The purpose of this app is to apply several different models to predict a win for a player."),
                  br(), 
@@ -68,29 +106,6 @@ shinyUI(fluidPage(
                    Each player chooses 1 of 100+ heros, each with their own unique abilities and playstyles, to compete against each other. My favorite hero to play right now is Nature's Prophet."),
                  p("Nature's Prophet is a hero with abilities that focus on having a global presence, and using summoned units to deal damage to enemy buildings.
                    As you can imagine, that may influence certain variables to be more impactful for him than other heros."),
-                 br(),
-                 h5("Some Notes"),
-                 p("This app will focus on predicting wins using several variables from matches pulled from an API for the game version 7.31d. The data we are using is a collection of games gathered from 
-                 a group of professional and semi-professional tournaments and leagues that all contained Nature's Prophet."),
-                 br(),
-                 h3("Instructions"),
-                 strong("1. Explore the variables you're interested in by using the EDA options and the Plot panel to view key metrics."),
-                 br(),
-                 br(),
-                 strong("2. Pick the variables you'd like to create a model with in the modeling tab options."),
-                 br(),
-                 br(),
-                 strong("3. Click the Train Models button to filter the data using your variables and training a GLM/logistic regression model, classification tree, and a random forest."),
-                 br(),
-                 br(),
-                 strong("4. View the stats and measures of success from your models and play around to see if you can find the variables that will give you the strongest model."),
-                 br(),
-                 br(),
-                 strong("5. Move to the Predictions tab and enter some of your own values you'd like to predict off of. These predictions will be using the randomforest model."),
-                 br(),
-                 br(),
-                 strong("6. Click the Predict button on the left and see if you'd win the game or not."),
-                 br(),
                  br(),
                  h3("The Variables"),
                  p("The variables used are all stats from the games themselves. The list and a short description of what each means."),
@@ -111,6 +126,10 @@ shinyUI(fluidPage(
                  strong("8. lane_role"),p("Across lanes, a team is divided up into farm priorities to identify who should be taking last hits for gold. This is denoted by the numbers 1 - 5 with 1 being the most important and 5 being the least important. These values are a bit mis-represented as its hard to capture who was prioritized with farm outside of net worth. Its best to interpret this as an indicator of farm level within their team. i.e. A value of 1 would indicate they were the most farmed on their team."),
                  br(),
                  br(),
+                 h4("Some Notes"),
+                 p("This app will focus on predicting wins using several variables from matches pulled from an API for the game version 7.31d. The data we are using is a collection of games gathered from 
+                 a group of professional and semi-professional tournaments and leagues that all contained Nature's Prophet."),
+                 br(),
                  h4("Sources & Packages"),
                  p("readr
                    dplyr
@@ -123,24 +142,38 @@ shinyUI(fluidPage(
                    shiny
                    DT
                    knitr
-                   tree"),
+                   tree
+                   mlr3
+                   kknn"),
                  uiOutput("url"),
                  uiOutput("url2"),
                  uiOutput("url3"),
         ),
         tabPanel("Plot",plotOutput("histPlot")),
-        tabPanel("Modeling",
+        tabPanel("Dataset",
                  br(),
                  p("Training set size:"),textOutput("trainSetSize"),
                  p("Predictors:"),textOutput("modelPreds"),
-                 p("You will be training on the below data"),
+
+                 p("Your subsetted data is below"),
+                 downloadButton("downloadSubset", "Download"),
                  dataTableOutput("dataModel"),
+
                  p("The index chosen for training:"),
                  dataTableOutput("dataIndex"),
-                 p("The data at those indexes:"),
+
+                 p("The data at those indexes for training:"),
+                 downloadButton("downloadTrain","Download"),
                  dataTableOutput("dataTrain"),
+
                  p("The data for testing"),
-                 dataTableOutput("dataTest"),
+                 downloadButton("downloadTest","Download"),
+                 dataTableOutput("dataTest")),
+
+        tabPanel("Modeling",
+                 br(),
+                 #p("Training set size:"),textOutput("trainSetSize"),
+                 #p("Predictors:"),textOutput("modelPreds"),
                  h4("Logistic Regression/GLM"),
                  p("We will be using logistic regression in our first model to track the log odds of whether Nature's Prophet will win. 
                    Logistic Regression models is different from linear models for a success/failure response variable in that it is accurately attempting to model the probability of success.
@@ -150,21 +183,21 @@ shinyUI(fluidPage(
                  p("For example if you only chose a predictor of netwoth for your variable of interest, your link function between the coefficients and predictors to the log odds of success would be:"),
                  helpText('$$log(P(success|networth)/1-P(success/networth)) = beta_0 + beta_1*networth$$'),
                  p("This does mean there is some loss of interpretability of the model that is returned without more calculation. Also important to note that deviance becomes a good method to evaluate accuracy rather than the standard RMSE."),
-                 #verbatimTextOutput("sum"),
-                 #verbatimTextOutput("confusMatr"),
+                 verbatimTextOutput("sum"),
+                 verbatimTextOutput("confusMatr"),
                  br(),
                  h4("Classification Tree Summary"),
-                 p("Classification trees have great strength in interpretability, but are not fully optimized. Classification trees achieve what accuracy they can accurate predictions by using the Gini Index.
-                 The basic idea behind a classification tree is that we chop our distribtuion of log odds into distinct regions and use the Gini index to evaluate the amount of inequality in distribution. 
+                 p("Classification trees have great strength in interpretability, but are not fully optimized. Classification trees achieve accurate predictions by using the Gini Index.
+                 The basic idea behind a classification tree is that we chop our distribtuion of log odds into distinct regions of values for each variable and use the Gini index to evaluate the amount of inequality in distribution. 
                    The Gini index is as follows, where p = the probabilty of correct classification:"),
                  helpText('Gini Index : $$\\frac{number in region}{class*2p(1-p)}$$'),
-                 p("We evaluate the Gini index on every single value with a region and choose the value that has the lowest Gini Index as the point to split on.
+                 p("We evaluate the Gini index on every single value within a region and choose the value that has the lowest Gini Index as the point to split on.
                    This continues for each region as the tree is built."),
                  p("We also want to minimize our value of deviance."),
                  helpText('Deviance: $$-2plog(p) -2(1-plog)(1-p)$$'),
                  #Insert pictures of Gini stuff from Fitting Classification Trees.Rmd
                  p("As mentioned earlier, Classification trees aren't optimized. The Gini index currently used only looks at what the best split is 'right now',
-                   rather than what are the best splits to minimize our deviance and Gini across our next 2, 3, or 4 regions. Often pruning is also needed as multiple tree nodes
+                   rather than what are the best region splits to minimize our deviance and Gini across our next 2, 3, or 4 regions. Often pruning is also needed as multiple tree nodes
                    are created without adding enough accuracy to the model's accuracy."),
 
                  
@@ -175,71 +208,69 @@ shinyUI(fluidPage(
                  p("Below you will see the stats from the classification tree you created with its variables. 
                    Take important note of the misclassification rate. These metrics are from the training data, we'll compare it to the testing data soon."),
                  verbatimTextOutput("classTreeSumm"),
-                 #verbatimTextOutput("fullTreeCM"), 
-                 #verbatimTextOutput("fullTreeAcc"),
+                 verbatimTextOutput("fullTreeCM"), 
+                 verbatimTextOutput("fullTreeAcc"),
                  
-                 h5("Tree Fit with Pruning"),
-                 p("Often times, classification tree's are 'pruned' by removing nodes. Tree nodes can be excessive or insignificant at times. To play to the classification tree's strength,
-                 it can be useful to reduce the nodes in a tree for easier interpretability or remove unnecessary nodes. Let's see how the number of nodes, (aka splits or branches), will affect our deviance. 
-                   We want to reduce our deviance, I've made sure our first row will contain the least amount of deviance with the least amount of branches."),
-                 dataTableOutput("pruneProg"),
+                 #h5("Tree Fit with Pruning"),
+                 #p("Often times, classification tree's are 'pruned' by removing nodes. Tree nodes can be excessive or insignificant at times. To play to the classification tree's strength,
+                 #it can be useful to reduce the nodes in a tree for easier interpretability or remove unnecessary nodes. Let's see how the number of nodes, (aka splits or branches), will affect our deviance. 
+                   #We want to reduce our deviance, I've made sure our first row will contain the least amount of deviance with the least amount of branches."),
+                 #dataTableOutput("pruneProg"),
                  #dataTableOutput("prunePred")
                  #dataTableOutput("pruneTree"),
                  #verbatimTextOutput("accPrune"),
                  
-                 #h4("Random Forest Summary"),
-                 #p("Random Forests are very useful to increase prediction accuracy past what a normal Classification Tree can accomplish.
-                   #The basic idea of Random Forests is that multiple classification trees are being averaged over to increase prediction accuracy,
-                   #but with this comes with a loss of interpretability. Random forests also use a random subset of predictors at each trained tree to account for particularly powerful predictors.
-                   #Random trees are typically outperformed by gradient boosted tree's depending on the nature of the data.
-                   #The number of predictors is determined by whether the tree is a classification tree or regression tree. Ours is a classification tree and will use that value when training our model."),
-                 #helpText('Classification : $$m = sqrt(p)$$'),
-                 #helpText('Regression : $$m=p/3$$'),
-                 #h5("Train Confusion Matrix"),
-                 #verbatimTextOutput("rfConfMat"),
-                 #h5("Test Confusion Matrix"),
-                 #verbatimTextOutput("rfTestConfMat")
-                 #textOutput("glmStats")
+                 h4("Random Forest Summary"),
+                 p("Random Forests are very useful to increase prediction accuracy past what a normal Classification Tree can accomplish.
+                 The basic idea of Random Forests is that multiple classification trees are being averaged over to increase prediction accuracy,
+                 but with this comes with a loss of interpretability. Random forests also use a random subset of predictors at each trained tree to account for particularly powerful predictors.
+                 Random trees are typically outperformed by gradient boosted tree's depending on the nature of the data.
+                 The number of predictors is determined by whether the tree is a classification tree or regression tree. Ours is a classification tree and will use that value when training our model."),
+                 helpText('Classification : $$m = sqrt(p)$$'),
+                 helpText('Regression : $$m=p/3$$'),
+                 h5("Train Confusion Matrix"),
+                 verbatimTextOutput("rfConfMat"),
+                 h5("Test Confusion Matrix"),
+                 verbatimTextOutput("rfTestConfMat"),
+                 h4("kNN Summary"),
+                 p("K Neartest Neighbors, kNN for short, uses predictor variables to establish similarity between other observations. Labeling each observation as a win or loss,
+                   and comparing the Euclidean distance between the new observation and its neighbors allows for the distance function to be minimized for each category of observation.
+                   In our example, our categories are win or lose. Using this method will predict a win or loss depending on the distance between its neighbors."),
+                 verbatimTextOutput("knnConfMat"),
+                 verbatimTextOutput("knnF1")
+                 #textOutput("glmStats"),
         ), #end of tabpanel 2
-        
         
         tabPanel("Predictions",
                  verbatimTextOutput("userPrediction"),
-                 conditionalPanel(condition = "input.cbgInput.includes('net_worth')",
+                 conditionalPanel(condition = "input.preds.includes('net_worth')",
                                   numericInput("userNetworth", label = h4("Net Worth"), value = 1)),
                                   
-                 conditionalPanel(condition ="input.cbgInput.includes('gold_per_min')",
+                 conditionalPanel(condition ="input.preds.includes('gold_per_min')",
                                   numericInput("userGPM", label = h4("Gold Per Min"), value = 1)),
                                   
-                 conditionalPanel(condition ="input.cbgInput.includes('gold')",
+                 conditionalPanel(condition ="input.preds.includes('gold')",
                                   numericInput("userGold", label = h4("Gold"), value = 1)),
                                   
-                 conditionalPanel(condition ="input.cbgInput.includes('kills')",
+                 conditionalPanel(condition ="input.preds.includes('kills')",
                                   numericInput("userKills", label = h4("Kills"), value = 1)),
                                   
-                 conditionalPanel(condition ="input.cbgInput.includes('tower_damage')",
+                 conditionalPanel(condition ="input.preds.includes('tower_damage')",
                                   numericInput("userTD", label = h4("Tower Damage"), value = 1)),
                                   
-                 conditionalPanel(condition ="input.cbgInput.includes('duration')",
+                 conditionalPanel(condition ="input.preds.includes('duration')",
                                   numericInput("userDuration", label = h4("Duration"), value = 1)),
                                   
-                 conditionalPanel(condition ="input.cbgInput.includes('lane')",
+                 conditionalPanel(condition ="input.preds.includes('lane')",
                                   selectInput("userLane", label = h4("Lane"), 
                                               choices = list("1" = 1, "2" = 2, "3" = 3), 
                                               selected = 1)),
                                   
-                 conditionalPanel(condition="input.cbgInput.includes('lane_role')",
+                 conditionalPanel(condition="input.preds.includes('lane_role')",
                                   selectInput("userLaneRole", label = h4("Lane Role"), 
                                               choices = list("1" = 1, "2" = 2, "3" = 3, "4" = 4, "5"=5), 
                                               selected = 1))
-                 ),#end of tabPanel3
-        
-        
-        tabPanel("Data Table",
-                 dataTableOutput("userTable"),
-                 p("Feel free to download your subsetted data here."),
-                 downloadButton("downloadData", "Download")
-                 )#end of tabPanel4
+                 )#end of tabPanel3
         
         )#end of tabsetPanel
       )#end of MainPanel
