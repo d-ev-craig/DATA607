@@ -49,7 +49,7 @@ shinyUI(fluidPage(
       br(),
       h3("Modeling Options:"),
       sliderInput("train", "Choose Training Data Size",
-                  min = .2, max = .8, value = .3, step = .1),
+                  min = .2, max = .8, value = .7, step = .1),
       checkboxGroupInput("preds","Choose Predictors", selected = "net_worth",choices = list("gold_per_min",
                                                                "net_worth",
                                                                "gold",

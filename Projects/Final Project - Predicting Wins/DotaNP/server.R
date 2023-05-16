@@ -21,9 +21,11 @@ library(DT)
 library(knitr)
 library(tree)
 library(mathjaxr)
-library(mlr3)
-library(mlr3viz)
-library(mlr3learners)
+library(rpart)
+library(rpart.plot)
+#library(mlr3)
+#library(mlr3viz)
+#library(mlr3learners)
 library(kknn)
 
 
@@ -402,6 +404,8 @@ output$trainTreeAcc <- renderText ({
 output$plotClassTree <- renderPlot({
   classTreeFit <- classTree()
 
+  
+  #prp(classTreeFit$finalModel, extra = 1, branch = 0.7, fallen.leaves = TRUE, box.palette = "RdBu", nn = TRUE, varlen = 0.5, yesno = 2)
   plot(classTreeFit, show.node.label=TRUE);text(classTreeFit,pretty=0,cex=0.7)
 })
 
