@@ -1,7 +1,7 @@
 ---
 title: "DotaNP"
 author: "Daniel Craig"
-date: '2022-08-07'
+date: '2023-05-14'
 output: html_document
 ---
 ```{r}
@@ -21,13 +21,9 @@ library(mlr3viz)
 library(mlr3learners)
 library(kknn)
 ```
-
-8.14 Update:
-Finish the Predictions Page
-Finish showing filtered data page
-
-Make it prettier
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, message = FALSE, echo = TRUE, warning = FALSE, error = FALSE)
+```
 Load In Data
 ```{r}
 # data<-read_csv("_Projects\\Project3\\datasets\\NPBase.csv")
@@ -287,8 +283,8 @@ confusionMatrix(data = dataTest$win, reference = predict(glmFit, newdata = dataT
 ```{r}
 classTreeFit <- tree(win ~ ., data = dataTrain) # The '.' means all variables to be used as explanatory variables
 summary(classTreeFit)
-
-class(classTreeFit)
+plot(classTreeFit, show.node.label=TRUE)
+text(classTreeFit,pretty=0,cex=0.7)
 ```
 
 ### Confusion Matrix of Accuracy
@@ -296,7 +292,7 @@ class(classTreeFit)
 df <- data.frame(matrix(rnorm(16), nrow = 4))
 colnames(df) <- paste0("Col", 1:4)
 rownames(df) <- paste0("Row", 1:4)
-datatable(df)
+
 ```
 
 
@@ -465,9 +461,9 @@ predsClass$confusion
 ```
 
 #Thresholding
-Can adjust the threshold of log odds at which it would be predicted as a win as below. Recall that if the log odds are above .5, it will be predicted a win. Sometimes you may want to adjust this for accruacy.
+Can adjust the threshold of log odds at which it would be predicted as a win as below. Recall that if the log odds are above .5, it will be predicted a win. Sometimes you may want to adjust this for accuracy.
 ```{r}
-predsClass$set_threshold(0.7)
+#predsClass$set_threshold(??)
 predsClass$confusion
 ```
 

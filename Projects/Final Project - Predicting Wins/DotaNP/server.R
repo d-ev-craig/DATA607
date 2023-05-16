@@ -309,12 +309,12 @@ output$downloadTest <- downloadHandler(
 
 ######### ------------------ Logistic Reg ------------------------------------------------
 
+output$ex2 <- renderUI ({
+  withMathJax(helpText('$$log((Psuccess|networth)/1-P(success/networth)) = \beta_0 + \beta_1*networth$$'))
+})
 
 glmModel <- eventReactive(input$modelButton,{
-##Math Jax
-  output$ex2 <- renderUI ({
-    withMathJax(helpText('$$log((Psuccess|networth)/1-P(success/networth)) = \beta_0 + \beta_1*networth$$'))
-  })
+
 
 dataTrain <- dataTrain()
 glmFit <- train(win ~ ., data = dataTrain,
@@ -350,6 +350,16 @@ output$sum <- renderPrint({
 
 ### Classification Trees ----------
 
+output$regionGini <- renderImage({
+  # When input$n is 3, file name is ./images/image3.jpeg
+  filename <- normalizePath(file.path('/images/treeRegions.png'))
+  filename
+  # Return a list containing the filename and alt text
+  list(src = filename,
+       alt = paste("Image number"))
+  
+}, deleteFile = FALSE)
+
 ##Unpruned Classification Tree
 
 classTree <- eventReactive(input$modelButton,{    # Create out model
@@ -371,6 +381,29 @@ fullPred <- eventReactive( input$modelButton, {
 
   fullPred <- predict(classTreeFit, dplyr::select(dataTest, -"win"), type = "class")
 })
+#Create and output training conf mat for classification tree
+output$treeTrainConfMat <- renderPrint({
+  dataTrain <- dataPrepVals$dataTrain
+  classTreeFit <- classTree()
+  trainPreds <- predict(classTreeFit,newdata = dplyr::select(dataTrain, -"win"),type="class")
+  cm <- confusionMatrix(trainPreds, dataPrepVals$dataTrain$win)
+  cm <- cm$table
+  cm
+})
+#Create and output training accuracy for classification tree
+output$trainTreeAcc <- renderText ({
+  dataTrain <- dataPrepVals$dataTrain
+  classTreeFit <- classTree()
+  trainPreds <- predict(classTreeFit,newdata = dplyr::select(dataTrain, -"win"),type="class")
+  cm <- confusionMatrix(trainPreds, dataPrepVals$dataTrain$win)
+  cmAcc <- cm$overall[1]
+})
+#Create and output the decision tree
+output$plotClassTree <- renderPlot({
+  classTreeFit <- classTree()
+
+  plot(classTreeFit, show.node.label=TRUE);text(classTreeFit,pretty=0,cex=0.7)
+})
 
 #Creating Confusion Matrix with Prediction-TestData results
 fullTreeCM <- reactive({
@@ -383,9 +416,9 @@ fullTreeCM <- reactive({
   cmFull
 
 })
-output$fullTreeCM <- renderPrint({   #Outputting table
+output$fullTreeCM <- renderPrint({   #Outputting Model Summary
   table <- fullTreeCM()
-
+  
   table
 })
 #Creating Confusion Matrix to Output Accuracy
@@ -439,7 +472,6 @@ pruneStats <-reactive({                           #Generate best pruned model
   pruneFitFinal
   prunePred <- predict(pruneFitFinal, dplyr::select(dataTest, -"win"), type = "class")
 })
-
 pruneTree <-reactive({    #Creating the pruned model
   req(dataPrepVals$dataTrain)
   unPruneFit <-tree(win ~ ., data = dataPrepVals$dataTrain)
@@ -552,7 +584,7 @@ output$rfTestConfMat <- renderPrint({
 #   fullPred <- predict(classTreeFit, dplyr::select(dataTest, -"win"), type = "class")
 # })
 
-## ----------------------- kNN Caret ---------------------------##
+##### ----------------------- kNN Caret ---------------------------##
 
 knnNP <- eventReactive(input$modelButton, {
   
@@ -563,20 +595,33 @@ knnNP <- eventReactive(input$modelButton, {
         trControl = trainControl(method = "cv", number = 10),
         tuneGrid = expand.grid(k = 1:10)
         )
-
+})
+knnTestMat <- reactive({
+  dataTest <- dataTest()
+  knn <- knnNP()
+  
   knnPreds <- predict(knn, newdata = dataTest)
   
   knnAcc <- confusionMatrix(knnPreds, dataTest$win)
-  
   knnAcc
 })
 
-output$knnConfMat <- renderPrint({
-  confMat <- knnNP()
-  confMat
+output$knnModelSum <- renderPrint({
+  
+  knnNP <- knnNP()
+  print(knnNP)
+  
+})
+output$knnTestConfMat <- renderPrint({
+  knnAcc <- knnTestMat()
+  knnAcc
+})
+output$knnPlot <- renderPlot({
+  knn <- knnNP()
+  plot(knn)
 })
 output$knnF1 <- renderPrint({
-  knnAcc <- knnNP()
+  knnAcc <- knnTestMat()
   truePositives <- knnAcc$table[2, 2]
   falsePositives <- knnAcc$table[2, 1]
   falseNegatives <- knnAcc$table[1, 2]

@@ -183,14 +183,24 @@ shinyUI(fluidPage(
                  p("For example if you only chose a predictor of netwoth for your variable of interest, your link function between the coefficients and predictors to the log odds of success would be:"),
                  helpText('$$log(P(success|networth)/1-P(success/networth)) = beta_0 + beta_1*networth$$'),
                  p("This does mean there is some loss of interpretability of the model that is returned without more calculation. Also important to note that deviance becomes a good method to evaluate accuracy rather than the standard RMSE."),
+                 h5("Log Regression Model Summary"),
                  verbatimTextOutput("sum"),
+                 h5("Log Regression Model Test Data Results"),
+                 p("The below area shows results from running our log regression model on the test data partition."),
                  verbatimTextOutput("confusMatr"),
                  br(),
                  h4("Classification Tree Summary"),
                  p("Classification trees have great strength in interpretability, but are not fully optimized. Classification trees achieve accurate predictions by using the Gini Index.
-                 The basic idea behind a classification tree is that we chop our distribtuion of log odds into distinct regions of values for each variable and use the Gini index to evaluate the amount of inequality in distribution. 
-                   The Gini index is as follows, where p = the probabilty of correct classification:"),
-                 helpText('Gini Index : $$\\frac{number in region}{class*2p(1-p)}$$'),
+                 To create our tree, we first chop our distribtuion of log odds into distinct regions of values for each variable, ."),
+                 div(
+                   tags$img(src = "treeRegions.png",height = '300px', weidth = '300px', deleteFile = FALSE),
+                     style="text-align: center;",
+                     h5("Fig. 2")
+                   ),
+                 p("We then use the Gini Index at each value inside the region to measure the likelihood of misclassification
+                 based on that value's distribution inside it's range. The Gini index is as follows, where p = the probabilty 
+                   of correct classification:"),
+                 helpText('Gini Index : $$\\frac{Number In Region}{class*2p(1-p)}$$'),
                  p("We evaluate the Gini index on every single value within a region and choose the value that has the lowest Gini Index as the point to split on.
                    This continues for each region as the tree is built."),
                  p("We also want to minimize our value of deviance."),
@@ -208,6 +218,11 @@ shinyUI(fluidPage(
                  p("Below you will see the stats from the classification tree you created with its variables. 
                    Take important note of the misclassification rate. These metrics are from the training data, we'll compare it to the testing data soon."),
                  verbatimTextOutput("classTreeSumm"),
+                 plotOutput("plotClassTree"),
+                 p('Train Confusion Matrix & Accuracy'),
+                 verbatimTextOutput('treeTrainConfMat'),
+                 verbatimTextOutput("trainTreeAcc"),
+                 p('Test Confusion Matrix & Accuracy'),
                  verbatimTextOutput("fullTreeCM"), 
                  verbatimTextOutput("fullTreeAcc"),
                  
@@ -223,9 +238,12 @@ shinyUI(fluidPage(
                  h4("Random Forest Summary"),
                  p("Random Forests are very useful to increase prediction accuracy past what a normal Classification Tree can accomplish.
                  The basic idea of Random Forests is that multiple classification trees are being averaged over to increase prediction accuracy,
-                 but with this comes with a loss of interpretability. Random forests also use a random subset of predictors at each trained tree to account for particularly powerful predictors.
-                 Random trees are typically outperformed by gradient boosted tree's depending on the nature of the data.
-                 The number of predictors is determined by whether the tree is a classification tree or regression tree. Ours is a classification tree and will use that value when training our model."),
+                 but with this comes with a loss of interpretability. Each tree is built individually with a random subset of the variables present.
+                 Each tree is built using cross-fold validation. Cross-fold validation partitions available data into 'k' number of folds, ie. if its a 5 fold validation,
+                 data is partitioned into 5 different sets, and an individual tree model is built using k-1 folds, ie 4 folds. Each fold drops one of the variables, as mentioned earlier.
+                 A decision is made by using a majority vote from the trees for classification and an average from the trees for regression.
+                 Random trees are typically outperformed by gradient boosted tree's depending on the nature of the data, but typically are less prone to over-fitting.
+                 The number of predictors, p, is determined by whether the tree is a classification tree or regression tree. Ours is a classification tree and will use that value when training our model."),
                  helpText('Classification : $$m = sqrt(p)$$'),
                  helpText('Regression : $$m=p/3$$'),
                  h5("Train Confusion Matrix"),
@@ -233,10 +251,22 @@ shinyUI(fluidPage(
                  h5("Test Confusion Matrix"),
                  verbatimTextOutput("rfTestConfMat"),
                  h4("kNN Summary"),
-                 p("K Neartest Neighbors, kNN for short, uses predictor variables to establish similarity between other observations. Labeling each observation as a win or loss,
-                   and comparing the Euclidean distance between the new observation and its neighbors allows for the distance function to be minimized for each category of observation.
+                 p("K Neartest Neighbors, kNN for short, uses predictor variables to establish similarity between labeled or classified observations. Labeling each observation as a win or loss,
+                   and comparing the Euclidean distance between a supposed new observation and its neighbors allows for the distance between neighbors to be calculated. A specific number of nearest neighbors, k, is used
+                   to evaluate the what label a new observation is to receive. If there is a tie in voting, distance-based ranking can be applied.
                    In our example, our categories are win or lose. Using this method will predict a win or loss depending on the distance between its neighbors."),
-                 verbatimTextOutput("knnConfMat"),
+                 verbatimTextOutput("knnModelSum"),
+                 verbatimTextOutput("knnTestConfMat"),
+                 p("Here we can see the progression of accruacy as the code iterates through using 1 to 10 neighbors."),
+                 plotOutput("knnPlot"),
+                 h5("F1 Score"),
+                 p("The F1 Score is an important measure for accuracy in classification models that could be heavily biased to a majority class. If most correct predictions are 'true',
+                   then a model could achieve acceptable accuracy just by predicting 'true.' The F1 score takes into account false positives and false negatives to achieve a better
+                   indicator for model representation than just accuracy.
+                   The F1 score accomplishes this with the following formula:"),
+                 helpText('F1 Score: $$\\frac{2*Precision * Recall}{Precision + Recall}$$'),
+                 helpText('Precision: Ratio of True Positives to the Sum of True and False Positives $$\\frac{TP}{TP+FP}$$'),
+                 helpText('Recall: Ratio of True Positives to the Sum of True Positives and False Negatives $$\\frac{TP}{TP+FN}$$'),
                  verbatimTextOutput("knnF1")
                  #textOutput("glmStats"),
         ), #end of tabpanel 2
