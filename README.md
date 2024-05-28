@@ -21,13 +21,13 @@ ggplot(huckSentiment, aes(x = index, y = sentiment, fill = sentiment)) +
   geom_col(show.legend = FALSE)
 ```
 
-![Chapter Sentiment](plots/chap_sent.png)
+![Chapter Sentiment](Week_10_Sentiment_Analysisplots/chap_sent.png)
 
 A comparison of sentiment between different lexicons used.
 
-![Lexicon Sent Comparison](plots/lexicon_sent_comp.png)
+![Lexicon Sent Comparison](Week_10_Sentiment_Analysisplots/lexicon_sent_comp.png)
 
 Viewing which words contribute to the sentiment the most.
-
-![Word Count](plots/sent_count.png)
-![Word Cloud](plots/pogneg_wordcloud.png)
+Week 10 - Sentiment Analysis/plots
+![Word Count](Week_10_Sentiment_Analysis/plots/sent_count.png)
+![Word Cloud](Week_10_Sentiment_Analysis/plots/pogneg_wordcloud.png)
