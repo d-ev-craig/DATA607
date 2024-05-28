@@ -5,9 +5,9 @@ account: hhl7f9-daniel-craig
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9108103
-bundleId: 7225578
+bundleId: 7225611
 url: https://hhl7f9-daniel-craig.shinyapps.io/Predicting_Wins_Classification/
-when: 1684257344.03153
-lastSyncTime: 1684257344.03154
+when: 1684258029.10385
+lastSyncTime: 1684258029.10387
 asMultiple: FALSE
 asStatic: FALSE

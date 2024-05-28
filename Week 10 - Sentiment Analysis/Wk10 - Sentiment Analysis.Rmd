@@ -23,6 +23,7 @@ library(rmarkdown)
 library(wordcloud)
 library(reshape2)
 library(janeaustenr)
+library(RColorBrewer)
 ```
 
 # Sentiment Analysis
@@ -40,16 +41,23 @@ works <- gutenberg_works()
 works
 works %>% filter(title == 'Adventures of Huckleberry Finn')
 
-huckleberry <- gutenberg_download('76')
+#huckleberry <- gutenberg_download('76') - no longer works
+
+huckleberry <- read_csv("Huck.csv") %>% rename(text = value, linenumber = ...1)
+huckleberry <- na.omit(huckleberry)
 ```
 <br>
-From here, we want to clean our data by the tidytext principles using code sourced from Text Mining with R _(Silge, J., & Robinson, D. 2017, Sec. 2.2)_.
+From here, we want to clean our data by the tidytext principles using code sourced from Text Mining with R _(Silge, J., & Robinson, D. 2017, Sec. 2.2)
+
+
+
+
 ```{r TidyText}
-tidyHuck <- huckleberry[-(1:384),] %>% #removing first 380 rows since its an index and interferes with chapter regex
+tidyHuck <- huckleberry %>% #removing first 380 rows since its an index and interferes with chapter regex
   mutate(
-    linenumber = row_number(), #add index of row numbers
+    #linenumber = row_number(), #add index of row numbers
     chapter = cumsum(str_detect(text,  #add index of chapter
-                                regex("CHAPTER ([IVXLC]*\\.|THE LAST)", #by finding any text starting with "chapter #"
+                                regex("CHAPTER ([IXVLC]*.|THE LAST)", #by finding any text starting with "chapter #"
                                       ignore_case = TRUE)))) %>%
   ungroup() %>%
   unnest_tokens(word, text) #notice we use 'word' as the unit of token
@@ -105,7 +113,9 @@ paged_table(huckSentiment)
 ```
 <br>
 ```{r}
-ggplot(huckSentiment, aes(index, sentiment)) +
+ggplot(huckSentiment, aes(x = index, y = sentiment, fill = sentiment)) +
+  geom_bar(stat = 'identity') +
+  scale_fill_gradient2(low='red', mid='snow3', high='darkgreen', space='Lab') +
   geom_col(show.legend = FALSE)
 ```
 <br>
@@ -261,7 +271,7 @@ bind_rows(bing_word_counts,nonNeutralSyuzhetCounts) %>%
 |    We can see from bing and syuzhet, that the word 'well' is identified as a positive word, but due to the dialect its more likely Twain inserted the word as a filler word. We can easily remove this through the use of custom stop words _(Silge, J., & Robinson, D. 2017, Sec. 2.4)_. With this lexicon, we could then filter with the created tibble as below.
 
 ```{r}
-custom_stop_words <- bind_rows(tibble(word = c("well"),  
+custom_stop_words <- bind_rows(tibble(word = c("well","nigger"),  
                                       lexicon = c("custom")), 
                                stop_words)
 paged_table(custom_stop_words)
@@ -270,10 +280,13 @@ paged_table(custom_stop_words)
 ### Word Clouds
 |    A word cloud is an effective way to view most used words and can be thought of a plot unto itself. Using a stop words list, we can highlight important most used words _(Silge, J., & Robinson, D. 2017, Sec. 2.5)_.
 ```{r}
+pal = brewer.pal(9,"BuGn")
+
 tidyHuck %>%
   anti_join(stop_words) %>%
+  anti_join(custom_stop_words) %>%
   count(word) %>%
-  with(wordcloud(word, n, min.freq = 50))
+  with(wordcloud(word, n, min.freq = 50, scale = c(8, .3), random.color = F, colors = pal))
 ```
 <br>
 <br>
@@ -281,12 +294,13 @@ tidyHuck %>%
 |    We can also view both negative and positive words in the same plot with the use of reshape's comparison cloud and acast _(Silge, J., & Robinson, D. 2017, Sec. 2.5)_.
 <br>
 ```{r}
+pal2 = brewer.pal(8, "RdYlGn")
 
 tidyHuck %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill = 0) %>%
-  comparison.cloud(colors = c("gray20", "gray80"),
+  comparison.cloud(colors = c("red", "darkgreen"),
                    max.words = 100)
 ```
 
@@ -296,7 +310,7 @@ tidyHuck %>%
 huckSentences <- tibble(text = huckleberry$text) %>% 
   unnest_tokens(sentence, text, token = "sentences")
 
-huckSentences$sentence[111]
+#huckSentences$sentence[111]
 ```
 <br>
 

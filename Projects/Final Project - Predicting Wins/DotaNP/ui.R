@@ -170,7 +170,7 @@ shinyUI(fluidPage(
                  downloadButton("downloadTest","Download"),
                  dataTableOutput("dataTest")),
 
-        tabPanel("Modeling",
+        tabPanel("Logistic Regression Model",
                  br(),
                  #p("Training set size:"),textOutput("trainSetSize"),
                  #p("Predictors:"),textOutput("modelPreds"),
@@ -189,7 +189,10 @@ shinyUI(fluidPage(
                  p("The below area shows results from running our log regression model on the test data partition."),
                  verbatimTextOutput("confusMatr"),
                  br(),
-                 h4("Classification Tree Summary"),
+        ),
+                 
+        tabPanel("Decision Tree Model",
+                 h4("Decision Tree Summary"),
                  p("Classification trees have great strength in interpretability, but are not fully optimized. Classification trees achieve accurate predictions by using the Gini Index.
                  To create our tree, we first chop our distribtuion of log odds into distinct regions of values for each variable, ."),
                  div(
@@ -209,11 +212,7 @@ shinyUI(fluidPage(
                  p("As mentioned earlier, Classification trees aren't optimized. The Gini index currently used only looks at what the best split is 'right now',
                    rather than what are the best region splits to minimize our deviance and Gini across our next 2, 3, or 4 regions. Often pruning is also needed as multiple tree nodes
                    are created without adding enough accuracy to the model's accuracy."),
-
-                 
-                 #verbatimTextOutput("pruneStats"), #sortofwork
-                 #plotOutput("pruneGraph"), #work
-                 
+        
                  h5("Tree Fit without Pruning"),
                  p("Below you will see the stats from the classification tree you created with its variables. 
                    Take important note of the misclassification rate. These metrics are from the training data, we'll compare it to the testing data soon."),
@@ -234,7 +233,10 @@ shinyUI(fluidPage(
                  #dataTableOutput("prunePred")
                  #dataTableOutput("pruneTree"),
                  #verbatimTextOutput("accPrune"),
-                 
+                 #verbatimTextOutput("pruneStats"), #sortofwork
+                 #plotOutput("pruneGraph"), #work
+        ),
+        tabPanel("Random Forest Model",
                  h4("Random Forest Summary"),
                  p("Random Forests are very useful to increase prediction accuracy past what a normal Classification Tree can accomplish.
                  The basic idea of Random Forests is that multiple classification trees are being averaged over to increase prediction accuracy,
@@ -250,26 +252,28 @@ shinyUI(fluidPage(
                  verbatimTextOutput("rfConfMat"),
                  h5("Test Confusion Matrix"),
                  verbatimTextOutput("rfTestConfMat"),
+        ),
+        tabPanel("kNN Model",
                  h4("kNN Summary"),
                  p("K Neartest Neighbors, kNN for short, uses predictor variables to establish similarity between labeled or classified observations. Labeling each observation as a win or loss,
                    and comparing the Euclidean distance between a supposed new observation and its neighbors allows for the distance between neighbors to be calculated. A specific number of nearest neighbors, k, is used
                    to evaluate the what label a new observation is to receive. If there is a tie in voting, distance-based ranking can be applied.
                    In our example, our categories are win or lose. Using this method will predict a win or loss depending on the distance between its neighbors."),
                  verbatimTextOutput("knnModelSum"),
+                 p("Below are our results of applying our model to the test data."),
                  verbatimTextOutput("knnTestConfMat"),
                  p("Here we can see the progression of accruacy as the code iterates through using 1 to 10 neighbors."),
                  plotOutput("knnPlot"),
                  h5("F1 Score"),
                  p("The F1 Score is an important measure for accuracy in classification models that could be heavily biased to a majority class. If most correct predictions are 'true',
                    then a model could achieve acceptable accuracy just by predicting 'true.' The F1 score takes into account false positives and false negatives to achieve a better
-                   indicator for model representation than just accuracy.
-                   The F1 score accomplishes this with the following formula:"),
+                   indicator for model representation than just accuracy."),
+                  verbatimTextOutput("knnF1"),
+                  p("The F1 score accomplishes this with the following formula:"),
                  helpText('F1 Score: $$\\frac{2*Precision * Recall}{Precision + Recall}$$'),
                  helpText('Precision: Ratio of True Positives to the Sum of True and False Positives $$\\frac{TP}{TP+FP}$$'),
-                 helpText('Recall: Ratio of True Positives to the Sum of True Positives and False Negatives $$\\frac{TP}{TP+FN}$$'),
-                 verbatimTextOutput("knnF1")
-                 #textOutput("glmStats"),
-        ), #end of tabpanel 2
+                 helpText('Recall: Ratio of True Positives to the Sum of True Positives and False Negatives $$\\frac{TP}{TP+FN}$$')
+        ),
         
         tabPanel("Predictions",
                  verbatimTextOutput("userPrediction"),

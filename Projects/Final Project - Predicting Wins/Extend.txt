@@ -1,0 +1,31 @@
+Specific Points to match Checklist:
+
+https://rpubs.com/devcraig/DATA622as2_re
+
+- Motivation: Ability to predict a win
+	Translation to real-world:
+		Accounts that will default
+		Which team will win
+		Stock behvaior
+
+- Data Sources: API/CSV
+- Transformed Variables to Factors
+- Challenge:
+	MLR3 causing problems with Shiny
+	Inability to show pruning with Class Tree
+- Takeaway: What should a player focus on to perform well with this hero?
+
+- Extensions:
+	Ability to show correlation on variables, ANOVA, etc. without having to use logistic regression as a measure of a variable's proclivity to predict a win
+	Show log odds of the win
+	Ability to choose which model to predict with
+	Add in variables like player and specific tournament
+	Ability to make calls to OpenDota and allow user to select certain variables like patch or hero
+	
+
+
+
+
+	
+
+	
